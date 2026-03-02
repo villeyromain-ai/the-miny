@@ -5,136 +5,151 @@
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
    <meta name="apple-mobile-web-app-capable" content="yes">
    <style>
-       :root { --cyan-ice: #e0ffff; --cyan-neon: #00ffff; --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
-       body, html { margin:0; padding:0; background:#000; overflow:hidden; height:100dvh; width:100vw; position:fixed; font-family: -apple-system, sans-serif; }
+       :root { --glace: #E0FFFF; --neon: #00FFFF; --deep: #000505; }
+       body, html { margin:0; padding:0; background: var(--deep); overflow:hidden; height:100dvh; width:100vw; position:fixed; font-family: 'Courier New', monospace; }
 
-       /* Filtre de post-processing pour le glow glacé */
-       #stage-container { position: absolute; inset:0; filter: blur(0.4px) contrast(1.1); z-index: 1; }
-       canvas { display: block; touch-action: none; }
+       canvas { position: absolute; inset:0; z-index: 1; pointer-events: none; }
 
-       #ui-layer {
+       #proxy-ui {
            position: absolute; inset: 0; z-index: 10; pointer-events: none;
-           display: flex; flex-direction: column; justify-content: space-between;
-           padding: calc(var(--sat) + 20px) 25px calc(var(--sab) + 30px) 25px;
+           display: flex; flex-direction: column;
+           padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 30px;
        }
-       header { text-align: center; color: var(--cyan-neon); font-size: 9px; letter-spacing: 6px; font-weight: 200; text-transform: uppercase; opacity: 0.6; }
-       footer { display: flex; flex-direction: column; align-items: center; gap: 20px; }
 
-       #input-shield { 
-           width: 100%; max-width: 480px; height: 62px;
-           background: rgba(255,255,255,0.02); border-radius: 31px;
-           backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-           border: 0.5px solid rgba(0, 255, 255, 0.15);
-           display: flex; align-items: center; pointer-events: auto;
-           transition: transform 0.4s;
+       #header-quantum { flex: 0 0 100px; display: flex; align-items: center; justify-content: center; color: var(--neon); font-size: 8px; letter-spacing: 8px; font-weight: 100; text-transform: uppercase; }
+       #main-void { flex: 1; }
+       #footer-flux { flex: 0 0 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; }
+
+       .input-wrapper {
+           width: 100%; max-width: 450px; position: relative;
+           background: rgba(255,255,255,0.01); border-radius: 2px;
+           border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+           pointer-events: auto;
        }
-       #input-shield:focus-within { border-color: var(--cyan-ice); background: rgba(0, 255, 255, 0.05); transform: translateY(-3px); }
-       input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 15px; outline: none; letter-spacing: 3px; text-transform: uppercase; font-weight: 200; }
-       #geo { font-size: 7px; color: var(--cyan-neon); opacity: 0.3; letter-spacing: 4px; }
+       input {
+           background: transparent; border: none; color: #fff; width: 100%;
+           text-align: center; font-size: 14px; outline: none; padding: 15px 0;
+           letter-spacing: 5px; text-transform: uppercase; font-weight: 100;
+       }
+       #geo-sync { font-size: 6px; color: var(--neon); opacity: 0.4; letter-spacing: 3px; }
+
+       /* Effet de scan glitché */
+       .scanline { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0,255,255,0.03); z-index: 5; animation: scan 8s linear infinite; }
+       @keyframes scan { from { top: -10%; } to { top: 110%; } }
    </style>
 </head>
 <body>
 
-<div id="stage-container"><canvas id="canvas"></canvas></div>
+<div class="scanline"></div>
+<canvas id="quantum-core"></canvas>
 
-<div id="ui-layer">
-   <header>A-TOM : RÉSONANCE PHOTONIQUE</header>
-   <footer>
-       <div id="input-shield"><input type="text" id="flow" placeholder="INJECTER L'INTÉRÊT" autocomplete="off"></div>
-       <div id="geo">STABILISATION NANTES...</div>
-   </footer>
+<div id="proxy-ui">
+   <div id="header-quantum">CORE.A-TOM.STABLE</div>
+   <div id="main-void"></div>
+   <div id="footer-flux">
+       <div class="input-wrapper"><input type="text" id="flux-in" placeholder="INJECT.DATA" autocomplete="off"></div>
+       <div id="geo-sync">NANTES.GRID.SYNCING...</div>
+   </div>
 </div>
 
 <script>
-const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
-const flow = document.getElementById('flow');
-let w, h, dpr, particles = [], pulses = [];
+const canvas = document.getElementById('quantum-core'), ctx = canvas.getContext('2d');
+const input = document.getElementById('flux-in'), geo = document.getElementById('geo-sync');
+let w, h, dpr, particles = [], waves = [];
 
-function sync() {
+function setup() {
    dpr = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
    canvas.width = w * dpr; canvas.height = h * dpr;
    ctx.scale(dpr, dpr);
 }
-window.addEventListener('resize', sync); sync();
+window.addEventListener('resize', setup); setup();
 
-flow.addEventListener('keydown', (e) => {
-   if(e.key === 'Enter' && flow.value) {
-       const text = flow.value;
-       // Création de l'électron
+input.addEventListener('keydown', (e) => {
+   if(e.key === 'Enter' && input.value) {
+       // Injection de particule avec "spin" quantique
        particles.push({
-           t: text.toUpperCase(), a: Math.random()*6.28, r: 400, tr: 85 + (Math.random()*30),
-           s: 0.008 + (Math.random()*0.005), pulse: 0
+           t: input.value.toUpperCase(),
+           orbit: 100 + Math.random() * 50,
+           angle: Math.random() * Math.PI * 2,
+           speed: (Math.random() - 0.5) * 0.02,
+           entropy: Math.random() * 100,
+           life: 1.0
        });
-       // Déclenchement de la pulsation Cyan Glacé
-       pulses.push({ r: 30, maxR: 250, alpha: 1 });
-       flow.value = '';
+       waves.push({ r: 0, a: 1.0 });
+       input.value = '';
    }
 });
 
-function draw() {
-   ctx.clearRect(0, 0, w, h);
+function drawQuantum() {
+   ctx.fillStyle = 'rgba(0, 5, 5, 0.15)'; // Persistance rétinienne (Motion Blur)
+   ctx.fillRect(0, 0, w, h);
+
    const cx = w/2, cy = h/2;
 
-   // 1. DESSIN DES PULSATIONS (Halo de connexion)
-   pulses.forEach((p, i) => {
+   // 1. LES ONDES DE CHOC (Dilation du vide)
+   waves.forEach((wve, i) => {
        ctx.beginPath();
-       ctx.arc(cx, cy, p.r, 0, Math.PI*2);
-       ctx.strokeStyle = `rgba(224, 255, 255, ${p.alpha})`; // Cyan Glacé
-       ctx.lineWidth = 2;
+       ctx.arc(cx, cy, wve.r, 0, Math.PI*2);
+       ctx.strokeStyle = `rgba(0, 255, 255, ${wve.a * 0.2})`;
+       ctx.lineWidth = 0.5;
        ctx.stroke();
-
-       p.r += 4;
-       p.alpha -= 0.015;
-       if(p.alpha <= 0) pulses.splice(i, 1);
+       wve.r += 6; wve.a -= 0.01;
+       if(wve.a <= 0) waves.splice(i, 1);
    });
 
    ctx.save();
    ctx.translate(cx, cy);
 
-   // 2. NOYAU CENTRAL (m)
-   ctx.shadowBlur = 15;
-   ctx.shadowColor = "rgba(0, 255, 255, 0.5)";
-   ctx.strokeStyle = "rgba(0, 255, 255, 0.4)";
-   ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI*2); ctx.stroke();
+   // 2. LE NOYAU "m" (Sceau de Fondation)
+   // On dessine le m non pas comme du texte, mais comme une résonance
+   ctx.shadowBlur = 15; ctx.shadowColor = "#0FF";
+   ctx.fillStyle = "#FFF"; ctx.font = "200 24px Helvetica"; ctx.textAlign="center";
+   ctx.fillText("m", Math.random()-0.5, 8 + (Math.random()-0.5)); // Micro-vibration
    ctx.shadowBlur = 0;
 
-   ctx.fillStyle = "#fff"; ctx.font = "200 22px Helvetica"; ctx.textAlign="center";
-   ctx.fillText("m", 0, 8);
-
-   // 3. ÉLECTRONS AVEC HALO CONSTANT
+   // 3. NUAGES DE PROBABILITÉ (Électrons)
    particles.forEach(p => {
-       p.a += p.s;
-       p.r += (p.tr - p.r) * 0.1;
-       const x = Math.cos(p.a)*p.r, y = Math.sin(p.a)*p.r;
+       p.angle += p.speed;
+       p.entropy += 0.1;
 
-       // Halo blanc-cyan glacé (constant)
-       const gradient = ctx.createRadialGradient(x, y, 0, x, y, 15);
-       gradient.addColorStop(0, 'rgba(224, 255, 255, 0.4)');
-       gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
-       ctx.fillStyle = gradient;
-       ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI*2); ctx.fill();
+       // Calcul de la position avec incertitude
+       const noise = Math.sin(p.entropy) * 3;
+       const x = Math.cos(p.angle) * p.orbit + noise;
+       const y = Math.sin(p.angle) * p.orbit + noise;
 
-       // Point de matière
-       ctx.fillStyle = "#e0ffff";
-       ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI*2); ctx.fill();
+       // Halo Glacé (L'aura)
+       const g = ctx.createRadialGradient(x, y, 0, x, y, 20);
+       g.addColorStop(0, 'rgba(224, 255, 255, 0.3)');
+       g.addColorStop(1, 'rgba(0, 255, 255, 0)');
+       ctx.fillStyle = g;
+       ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI*2); ctx.fill();
 
-       // Label Sémantique
-       ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-       ctx.font = "300 9px Helvetica";
-       ctx.letterSpacing = "2px";
+       // Point de Singularité
+       ctx.fillStyle = "#FFF";
+       ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI*2); ctx.fill();
+
+       // Texte projeté (Sémantique)
+       ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+       ctx.font = "100 8px Courier New";
        ctx.fillText(p.t, x, y + 25);
+
+       // Liaison Laser instable
+       ctx.beginPath();
+       ctx.strokeStyle = "rgba(0, 255, 255, 0.05)";
+       ctx.moveTo(0,0); ctx.lineTo(x,y); ctx.stroke();
    });
 
    ctx.restore();
-   requestAnimationFrame(draw);
+   requestAnimationFrame(drawQuantum);
 }
 
+// DATA FEED NANTES
 navigator.geolocation.watchPosition(pos => {
-   document.getElementById('geo').innerText = `NANTES : ${pos.coords.latitude.toFixed(4)} | ${pos.coords.longitude.toFixed(4)}`;
+   geo.innerText = `NANTES.LAT.${pos.coords.latitude.toFixed(4)}.LONG.${pos.coords.longitude.toFixed(4)}.SYNC`;
 });
 
-draw();
+drawQuantum();
 </script>
 </body>
 </html>
