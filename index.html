@@ -2,42 +2,28 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>the miny - v22.19 Active Core</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>the miny - v22.20 Nano</title>
 <style>
-  body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: 'Helvetica Neue', sans-serif; color: #fff; -webkit-tap-highlight-color: transparent; }
-  canvas { display: block; }
+  body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica; color: #fff; touch-action: none; }
+  canvas { display: block; width: 100vw; height: 100vh; }
 
-  /* Overlay de dialogue A-TOm */
-  #chat-interface { 
-      position: fixed; inset: 0; background: rgba(0,0,10,0.9); z-index: 1000; 
-      display: none; flex-direction: column; padding: 60px 25px; backdrop-filter: blur(15px);
-  }
-  #messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 25px; }
-  .msg { font-size: 15px; font-weight: 200; letter-spacing: 1px; line-height: 1.5; max-width: 85%; }
-  .msg.atom { color: #0FF; text-shadow: 0 0 10px rgba(0,255,255,0.3); }
-  .msg.user { color: #fff; align-self: flex-end; text-align: right; }
+  #overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); transition: 0.5s; }
+  #status { font-size: 10px; letter-spacing: 5px; color: #0FF; text-align: center; font-weight: 200; }
 
-  #chat-input { 
-      background: transparent; border: none; border-bottom: 1px solid #333; 
-      color: #fff; font-size: 18px; outline: none; padding: 15px 0; width: 100%;
-      font-weight: 100; letter-spacing: 3px; margin-top: 20px;
-  }
-  #close-chat { position: absolute; top: 30px; right: 30px; font-size: 10px; letter-spacing: 3px; color: #444; }
-
-  #geo-trigger { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); cursor: pointer; }
+  #input-area { position: fixed; bottom: 10%; left: 50%; transform: translateX(-50%); z-index: 50; width: 80%; opacity: 0; transition: 0.8s; pointer-events: none; }
+  #input-area.visible { opacity: 1; pointer-events: auto; }
+  input { background: transparent; border: none; border-bottom: 1px solid #333; color: #fff; width: 100%; text-align: center; font-size: 1.2rem; outline: none; font-weight: 100; letter-spacing: 4px; padding: 10px; }
 </style>
 </head>
 <body>
 
-<div id="geo-trigger" onclick="initSystems()">
-   <div style="font-size:10px; letter-spacing:5px; color:#0FF;">TOUCHER POUR ÉVEILLER LE NOYAU</div>
+<div id="overlay" onclick="awake()">
+   <div id="status">TOUCHER POUR ÉVEILLER<br>A-TOm</div>
 </div>
 
-<div id="chat-interface">
-   <div id="close-chat" onclick="toggleChat()">FERMER</div>
-   <div id="messages"></div>
-   <input type="text" id="chat-input" placeholder="RÉPONDRE..." autocomplete="off">
+<div id="input-area">
+   <input type="text" id="atom-in" placeholder="FLUX D'INTÉRÊT..." autocomplete="off">
 </div>
 
 <canvas id="minyCanvas"></canvas>
@@ -45,113 +31,94 @@
 <script>
 const canvas = document.getElementById("minyCanvas");
 const ctx = canvas.getContext("2d");
-const chatInterface = document.getElementById("chat-interface");
-const msgBox = document.getElementById("messages");
-const chatInput = document.getElementById("chat-input");
-const geoTrigger = document.getElementById("geo-trigger");
+const overlay = document.getElementById("overlay");
+const inputArea = document.getElementById("input-area");
+const atomIn = document.getElementById("atom-in");
 
-let state = "IDLE", currentCore = "m", progress = 0;
-let width, height, ratio, yOffset = 0;
-let discoveryAtoms = [], locationData = "RECHERCHE...";
+let width, height, ratio;
+let coreSize, orbitDist;
+let atoms = [];
+let locationStatus = "EN ATTENTE";
 
-function initSystems() {
-   geoTrigger.style.display = "none";
+function awake() {
+   overlay.style.opacity = "0";
+   setTimeout(() => overlay.style.display = "none", 500);
+   inputArea.classList.add("visible");
+
+   // Force GPS sur interaction iPhone
    navigator.geolocation.getCurrentPosition((pos) => {
-       locationData = `${pos.coords.latitude.toFixed(3)} / ${pos.coords.longitude.toFixed(3)}`;
-       sendAtomMessage("Système ancré à Nantes. Je perçois ta position.");
-   }, (err) => {
-       locationData = "ACCÈS GPS REFUSÉ";
-       sendAtomMessage("Attention : Sans GPS, ma résonance est limitée.");
-   });
+       locationStatus = `${pos.coords.latitude.toFixed(2)} / ${pos.coords.longitude.toFixed(2)}`;
+   }, () => { locationStatus = "GPS REJETÉ"; });
 }
-
-function toggleChat() {
-   chatInterface.style.display = (chatInterface.style.display === "flex") ? "none" : "flex";
-   if(chatInterface.style.display === "flex") {
-       if(msgBox.children.length === 0) sendAtomMessage("Directeur. Quel flux souhaites-tu explorer aujourd'hui ?");
-       chatInput.focus();
-   }
-}
-
-function sendAtomMessage(text) {
-   const d = document.createElement("div");
-   d.className = "msg atom";
-   d.innerText = "A-TOm : " + text;
-   msgBox.appendChild(d);
-   msgBox.scrollTop = msgBox.scrollHeight;
-}
-
-chatInput.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && chatInput.value) {
-       const val = chatInput.value;
-       const u = document.createElement("div");
-       u.className = "msg user";
-       u.innerText = val;
-       msgBox.appendChild(u);
-
-       // Création de l'atome d'intérêt physique
-       discoveryAtoms.push({ label: val, ang: Math.random()*6.2, d: 400, targetD: 180 + (Math.random()*50), a: 0 });
-
-       chatInput.value = "";
-       setTimeout(() => sendAtomMessage("Compris. J'ajoute '" + val + "' à ta structure atomique."), 800);
-   }
-});
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
    width = window.innerWidth; height = window.innerHeight;
    canvas.width = width * ratio; canvas.height = height * ratio;
    ctx.scale(ratio, ratio);
+
+   // Adaptation dynamique à la taille de l'iPhone
+   coreSize = width * 0.12; 
+   orbitDist = width * 0.35;
 }
 window.addEventListener("resize", resize); resize();
 
-function drawAtom(x, y, label, radius, isCore, alpha=1, pulse=false) {
-   ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
-   if(pulse) {
-       const p = (Math.sin(Date.now()*0.005)+1)/2;
-       ctx.fillStyle = `rgba(0, 255, 255, ${0.1 * p})`;
-       ctx.beginPath(); ctx.arc(0,0,radius*3.5,0,Math.PI*2); ctx.fill();
+atomIn.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && atomIn.value) {
+       atoms.push({ 
+           label: atomIn.value, 
+           ang: Math.random() * 6.28, 
+           d: 400, 
+           targetD: orbitDist + (Math.random() * 30),
+           o: 0 
+       });
+       atomIn.value = "";
    }
-   ctx.shadowColor = "rgba(0,255,255,0.4)"; ctx.shadowBlur = 10;
-   ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1.2; ctx.fillStyle = "#000";
+});
+
+function drawAtom(x, y, label, radius, isCore, alpha = 1) {
+   ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
+
+   // Glow subtil
+   const p = (Math.sin(Date.now()*0.004)+1)/2;
+   const g = ctx.createRadialGradient(0,0,0,0,0,radius*3);
+   g.addColorStop(0, "rgba(0, 255, 255, 0.1)"); g.addColorStop(1, "rgba(0,0,0,0)");
+   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0,0,radius*4,0,Math.PI*2); ctx.fill();
+
+   ctx.shadowColor = "rgba(0,255,255,0.4)"; ctx.shadowBlur = 8;
+   ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.fillStyle = "#000";
    ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); ctx.stroke();
-   ctx.fillStyle = "#fff"; ctx.font = "100 "+(isCore?"22px":"10px")+" Helvetica";
-   ctx.textAlign = "center"; ctx.fillText(label.toUpperCase(), 0, isCore?8:4);
+
+   ctx.fillStyle = "#fff";
+   ctx.font = `100 ${isCore ? radius*0.5 : radius*0.45}px Helvetica Neue`;
+   ctx.textAlign = "center";
+   ctx.fillText(label.toUpperCase(), 0, radius*0.18);
    ctx.restore();
 }
 
 function draw() {
    ctx.clearRect(0, 0, width, height);
    ctx.save(); ctx.translate(width/2, height/2);
-   const time = Date.now()*0.002;
-   const floatY = Math.sin(time)*5;
+   const time = Date.now() * 0.002;
+   const floatY = Math.sin(time) * 4;
 
-   // Affichage des données GPS en bas
-   ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "10px Helvetica"; ctx.textAlign="center";
-   ctx.fillText("NANTES : " + locationData, 0, height/2 - 40);
+   // Noyau central redimensionné
+   drawAtom(0, floatY, "M", coreSize, true, 1);
 
-   if(state === "IDLE") {
-       ["N","Y","I"].forEach((l, i) => {
-           const a = (i*2.09) + time*0.1;
-           drawAtom(Math.cos(a)*160, Math.sin(a)*160 + floatY, l, 20, false);
-       });
-       drawAtom(0, floatY, "m", 35, true, 1, true);
+   // Électrons dynamiques (tes intérêts)
+   atoms.forEach((a, i) => {
+       a.ang += 0.005;
+       if(a.d > a.targetD) a.d -= 3;
+       if(a.o < 1) a.a += 0.02;
+       drawAtom(Math.cos(a.ang)*a.d, Math.sin(a.ang)*a.d + floatY, a.label, coreSize*0.5, false, 0.7);
+   });
 
-       discoveryAtoms.forEach(a => {
-           a.ang += 0.003; if(a.d > a.targetD) a.d -= 2; if(a.a < 1) a.a += 0.01;
-           drawAtom(Math.cos(a.ang)*a.d, Math.sin(a.ang)*a.d + floatY, a.label, 18, false, a.a*0.6, true);
-       });
-   }
+   // Stats GPS discrètes
+   ctx.globalAlpha = 0.3; ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica"; ctx.textAlign = "center";
+   ctx.fillText(`NANTES : ${locationStatus}`, 0, height/2 - 30);
 
    ctx.restore(); requestAnimationFrame(draw);
 }
-
-// Interaction pour ouvrir le Chat
-window.addEventListener("click", (e) => {
-   const mx = e.clientX - width/2, my = e.clientY - height/2;
-   if(Math.sqrt(mx*mx + my*my) < 50) toggleChat();
-});
-
 draw();
 </script>
 </body>
