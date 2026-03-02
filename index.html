@@ -14,20 +14,20 @@
   }
   canvas { position: absolute; inset: 0; z-index: 1; touch-action: none; }
 
-  #interface {
+  #frame {
       position: absolute; inset: 0; z-index: 10;
       display: flex; flex-direction: column;
       padding: calc(var(--sat) + 10px) 20px calc(var(--sab) + 10px) 20px;
       pointer-events: none; box-sizing: border-box;
   }
 
-  #v-status { flex: 0 0 40px; text-align: center; font-size: 9px; letter-spacing: 5px; color: #0FF; text-transform: uppercase; }
+  #status-top { flex: 0 0 40px; text-align: center; font-size: 9px; letter-spacing: 5px; color: #0FF; text-transform: uppercase; }
 
   /* Zone invisible qui définit mathématiquement le centre */
-  #gravity-well { flex: 1; width: 100%; }
+  #gravity-anchor { flex: 1; width: 100%; }
 
-  #input-zone { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  #pill { 
+  #input-area { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #pill-box { 
       width: 100%; max-width: 340px; background: rgba(255,255,255,0.07); 
       border-radius: 50px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
       pointer-events: auto;
@@ -37,93 +37,90 @@
       text-align: center; font-size: 15px; outline: none; padding: 16px 0; 
       letter-spacing: 2px; text-transform: uppercase; font-weight: 200;
   }
-  #nantes-sync { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 10px; }
+  #coord-tag { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 10px; letter-spacing: 2px; }
 
-  #shroud { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-  .boot-btn { border: 1px solid #333; padding: 12px 25px; border-radius: 40px; font-size: 8px; color: #666; letter-spacing: 4px; }
+  #launch { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .btn { border: 1px solid #333; padding: 12px 25px; border-radius: 40px; font-size: 8px; color: #666; letter-spacing: 4px; }
 </style>
 </head>
 <body>
 
-<div id="shroud" onclick="ignite()">
-   <div class="boot-btn">FORCER L'HORIZON</div>
+<div id="launch" onclick="boot()">
+   <div class="btn">RÉTABLIR LE NOYAU</div>
 </div>
 
-<div id="interface">
-   <div id="v-status">INITIALISATION...</div>
-   <div id="gravity-well"></div>
-   <div id="input-zone">
-       <div id="pill"><input type="text" id="cmd" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
-       <div id="nantes-sync">NANTES : SCAN...</div>
+<div id="frame">
+   <div id="status-top"><div id="v-msg">STABILISATION...</div></div>
+   <div id="gravity-anchor"></div>
+   <div id="input-area">
+       <div id="pill-box"><input type="text" id="flow-in" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
+       <div id="coord-tag">NANTES : SCAN...</div>
    </div>
 </div>
 
-<canvas id="stage"></canvas>
+<canvas id="view"></canvas>
 
 <script>
-const stage = document.getElementById("stage"), ctx = stage.getContext("2d");
-const well = document.getElementById("gravity-well"), status = document.getElementById("v-status");
-const cmd = document.getElementById("cmd"), sync = document.getElementById("nantes-sync");
+const view = document.getElementById("view"), ctx = view.getContext("2d");
+const anchor = document.getElementById("gravity-anchor"), vMsg = document.getElementById("v-msg");
+const flowIn = document.getElementById("flow-in"), coord = document.getElementById("coord-tag");
 
 let w, h, ratio, atoms = [], collisions = [];
 
-function ignite() {
-   document.getElementById("shroud").style.display = "none";
-   status.innerText = "NOYAU ANCRÉ";
+function boot() {
+   document.getElementById("launch").style.display = "none";
+   vMsg.innerText = "NOYAU RE-FIXÉ";
    navigator.geolocation.getCurrentPosition(p => {
-       sync.innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
+       coord.innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
    });
 }
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
-   stage.width = w * ratio; stage.height = h * ratio;
+   view.width = w * ratio; view.height = h * ratio;
    ctx.scale(ratio, ratio);
 }
 window.addEventListener("resize", resize); resize();
 
-cmd.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && cmd.value) {
-       // Orbites ultra-serrées (max 110px) pour rester visible
-       atoms.push({ l: cmd.value, a: Math.random()*6, d: 200, td: 65, c: "#0FF" });
-       status.innerText = "FLUX INTÉGRÉ";
-       cmd.value = "";
+flowIn.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && flowIn.value) {
+       // Rayon réduit à 70px pour rester bien au centre sur mobile
+       atoms.push({ l: flowIn.value, a: Math.random()*6, d: 200, td: 70, c: "#0FF" });
+       vMsg.innerText = "FLUX CAPTÉ";
+       flowIn.value = "";
        setTimeout(() => {
-           collisions.push({ l: "COLLISION", a: Math.random()*6, d: 280, td: 110, c: "#FFF" });
-           status.innerText = "RÉSONANCE DÉTECTÉE";
-       }, 800);
+           collisions.push({ l: "COLLISION", a: Math.random()*6, d: 300, td: 130, c: "#FFF" });
+           vMsg.innerText = "RÉSONANCE DÉTECTÉE";
+       }, 1000);
    }
 });
 
 function draw() {
-   // Nettoyage complet
    ctx.clearRect(0, 0, w, h);
 
-   // RECALCUL DU CENTRE PHYSIQUE RÉEL (Anti-dérive)
-   const box = well.getBoundingClientRect();
-   const cx = box.left + box.width / 2;
-   const cy = box.top + box.height / 2;
+   // RECALCUL DU CENTRE PHYSIQUE RÉEL (Anti-dérive Safari)
+   const r = anchor.getBoundingClientRect();
+   const cx = r.left + r.width / 2;
+   const cy = r.top + r.height / 2;
 
    ctx.save();
    ctx.translate(cx, cy);
 
    // NOYAU CENTRAL
    ctx.strokeStyle = "rgba(0,255,255,0.4)";
-   ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI*2); ctx.stroke();
+   ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.stroke();
    ctx.fillStyle = "#fff"; ctx.font = "100 18px Helvetica"; ctx.textAlign="center";
    ctx.fillText("m", 0, 7);
 
-   // ÉLECTRONS
+   // ORBITES
    [atoms, collisions].forEach((g, i) => {
        g.forEach(at => {
-           at.a += (i === 0 ? 0.01 : -0.006);
+           at.a += (i === 0 ? 0.008 : -0.004);
            at.d += (at.td - at.d) * 0.1;
            const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
-
            ctx.strokeStyle = at.c; ctx.globalAlpha = (i === 0 ? 1 : 0.4);
            ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2); ctx.stroke();
-
            ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
            ctx.fillText(at.l.toUpperCase(), x, y + 24);
        });
