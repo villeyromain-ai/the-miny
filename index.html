@@ -1,62 +1,29 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-   <style>
-       body { margin: 0; background: #000; overflow: hidden; }
-       canvas { display: block; touch-action: none; }
-       #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-   </style>
-</head>
-<body>
-<canvas id="screen"></canvas>
-<script>
-   const canvas = document.getElementById('screen');
-   const ctx = canvas.getContext('2d', { alpha: false }); // Optimisation maximale
-   let w, h, step = 0;
+/**
+* THE MINY - PROXIMITY RESONANCE v24.1
+* Pont entre le Réacteur (Nantes) et la Coquille (iPhone)
+*/
 
-   function resize() {
-       w = canvas.width = window.innerWidth;
-       h = canvas.height = window.innerHeight;
-   }
-   window.onresize = resize; resize();
-
-   // LE PIANO : Il ne fait que dessiner ce qu'on lui dicte
-   function render() {
-       ctx.fillStyle = '#000';
-       ctx.fillRect(0, 0, w, h);
-
-       const cx = w / 2;
-       const cy = h / 2;
-
-       // SEQUENCE 18.4 : GÉNÉRÉE PAR IMPULSION GÉOMÉTRIQUE
-       step += 0.015;
-       ctx.strokeStyle = '#00FFFF';
-       ctx.lineWidth = 1.5;
-
-       // On dessine les 3 vecteurs de force de la fondation
-       const lines = [[0, -70], [-60, 40], [60, 40]];
-       lines.forEach(p => {
-           ctx.beginPath();
-           ctx.moveTo(cx, cy);
-           ctx.lineTo(cx + p[0] * Math.min(1, step), cy + p[1] * Math.min(1, step));
-           ctx.stroke();
+const ATOM_BRIDGE = {
+   // ÉCOUTE DU RÉACTEUR DÉPORTÉ
+   listenToReactor() {
+       ReactorService.on('RESONANCE_DETECTED', (data) => {
+           // La bombe a trouvé quelque chose à Nantes !
+           this.irradiateShell(data.intensity, data.interestLabel);
        });
+   },
 
-       // Apparition du noyau m (Standard the miny)
-       if (step > 1.2) {
-           ctx.fillStyle = '#FFF';
-           ctx.font = '200 35px Helvetica Neue';
-           ctx.textAlign = 'center';
-           ctx.fillText('m', cx, cy + 12 + Math.sin(Date.now() * 0.003) * 4);
-       }
+   // IRRADIATION DE LA COQUILLE
+   irradiateShell(intensity, label) {
+       // 1. Augmentation de la luminescence (Peinture 18.4)
+       CanvasRenderer.glowTarget = intensity; // Le cyan devient électrique
 
-       requestAnimationFrame(render);
+       // 2. Tension Géométrique
+       CanvasRenderer.vibrationAmplitude = intensity * 2; 
+
+       // 3. Haptique de Bord (Châssis 19.5)
+       // Une pulsation physique qui imite le battement de cœur du réacteur
+       if(navigator.vibrate) navigator.vibrate([20, 100, 20]);
+
+       console.log(`A-TOM >>> RÉSONANCE : ${label} DÉTECTÉ À PROXIMITÉ.`);
    }
-
-   // Le Châssis 19.5 alimente ce rendu depuis le "vide"
-   render();
-</script>
-</body>
-</html>
+};
