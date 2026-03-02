@@ -4,144 +4,118 @@
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
    <style>
-       body { margin:0; background:#000; overflow:hidden; cursor:none; }
+       body { margin:0; background:#000; overflow:hidden; font-family: 'Helvetica Neue', sans-serif; }
        canvas { display:block; touch-action:none; }
+       #ui { position:fixed; bottom:40px; width:100%; text-align:center; pointer-events:none; }
+       input { pointer-events:auto; background:transparent; border:none; border-bottom:0.5px solid rgba(0,255,255,0.3); color:#fff; text-align:center; letter-spacing:5px; outline:none; padding:10px; width:200px; text-transform:uppercase; font-weight:200; font-size:12px; }
    </style>
 </head>
 <body>
-<canvas id="A-TOM"></canvas>
+<canvas id="piano"></canvas>
+<div id="ui"><input type="text" id="i-input" placeholder="AJOUTER i"></div>
 
 <script>
 /**
-* SECTION ALPHA : LE CHASSIS 19.5 (REDLINE)
-* Extraction d'entropie pour stabiliser le piano
+* LE RÉACTEUR (Le Châssis 19.5 déporté dans un thread fantôme)
+* Ce code s'exécute "ailleurs" pour ne pas perturber le piano.
 */
-const REDLINE = {
-   entropy: 0,
-   async ignite() {
-       const data = new Float32Array(1024);
-       window.crypto.getRandomValues(data);
-       const hash = await crypto.subtle.digest('SHA-256', data);
-       this.entropy = new Uint8Array(hash)[0] / 255;
-       return true;
+const reactorCode = `
+   self.onmessage = async function(e) {
+       if (e.data.type === 'IGNITE') {
+           // Calcul de l'entropie nucléaire sans bloquer le visuel
+           const data = new Uint8Array(1024);
+           self.crypto.getRandomValues(data);
+           const key = await self.crypto.subtle.digest('SHA-256', data);
+           self.postMessage({ type: 'BOMBE_READY', key: new Uint8Array(key)[0] });
+       }
+   }
+`;
+
+const blob = new Blob([reactorCode], { type: 'application/javascript' });
+const Reactor = new Worker(URL.createObjectURL(blob));
+
+/**
+* LE PIANO (La Carrosserie 18.4 - Rendu Pur)
+*/
+const canvas = document.getElementById('piano');
+const ctx = canvas.getContext('2d');
+let w, h, rotation = 0, lastX = 0, dragging = false, active = false, bootStep = 0;
+let electrons = [];
+
+function resize() {
+   canvas.width = window.innerWidth * window.devicePixelRatio;
+   canvas.height = window.innerHeight * window.devicePixelRatio;
+   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+   w = window.innerWidth; h = window.innerHeight;
+}
+window.onresize = resize; resize();
+
+// ÉCOUTE DU PONT (A-TOM)
+Reactor.onmessage = (e) => {
+   if (e.data.type === 'BOMBE_READY') {
+       console.log("CHASSIS ALIMENTÉ. DÉMARRAGE PIANO.");
+       animate(); 
+   }
+};
+
+// INTERACTION
+canvas.onpointerdown = e => { dragging = true; lastX = e.clientX; };
+window.onpointermove = e => { if(dragging) { rotation += (e.clientX - lastX) * 0.01; lastX = e.clientX; }};
+window.onpointerup = () => dragging = false;
+
+document.getElementById('i-input').onkeydown = e => {
+   if(e.key === 'Enter' && e.target.value) {
+       electrons.push({ t: e.target.value.toUpperCase(), a: Math.random()*6.28 - rotation, r: 85, o: 0 });
+       e.target.value = '';
+       if(navigator.vibrate) navigator.vibrate(15);
    }
 };
 
 /**
-* SECTION BETA : LA CARROSSERIE 18.4 (MICHEL-ANGE QUANTIQUE)
+* LA FRESQUE (Le mouvement)
 */
-const canvas = document.getElementById('A-TOM');
-const ctx = canvas.getContext('2d');
-let w, h, dpr, rotation = 0, lastX = 0, dragging = false;
-let bootProgress = 0, active = false;
-let electrons = [];
-
-function resize() {
-   dpr = window.devicePixelRatio || 1;
-   w = window.innerWidth; h = window.innerHeight;
-   canvas.width = w * dpr; canvas.height = h * dpr;
-   ctx.scale(dpr, dpr);
-}
-window.addEventListener('resize', resize);
-resize();
-
-// INPUT RÉSONANCE
-window.addEventListener('keydown', (e) => {
-   if(active && e.key !== 'Shift' && e.key !== 'Control') {
-       if(e.key === 'Enter') {
-           // Vibration haptique réelle
-           if(navigator.vibrate) navigator.vibrate(20);
-           return;
-       }
-       // Ajout d'intérêt organique
-       electrons.push({
-           label: e.key.toUpperCase(),
-           angle: Math.random() * Math.PI * 2,
-           dist: 85,
-           life: 0
-       });
-   }
-});
-
-// SPIN TACTILE
-canvas.addEventListener('pointerdown', e => { dragging = true; lastX = e.clientX; });
-canvas.addEventListener('pointermove', e => {
-   if(dragging) {
-       rotation += (e.clientX - lastX) * 0.01;
-       lastX = e.clientX;
-   }
-});
-canvas.addEventListener('pointerup', () => dragging = false);
-
-function render() {
-   ctx.fillStyle = '#000';
-   ctx.fillRect(0, 0, w, h);
-
+function animate() {
+   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
    const cx = w/2, cy = h/2;
 
    if (!active) {
-       // --- ANIMATION 18.4 : TENSION GÉOMÉTRIQUE ---
-       bootProgress += 0.012;
-       ctx.strokeStyle = '#00FFFF';
-       ctx.lineWidth = 1;
-
-       const lines = [
-           {x: 0, y: -60}, {x: -52, y: 30}, {x: 52, y: 30}
-       ];
-
-       lines.forEach(l => {
-           ctx.beginPath();
-           ctx.moveTo(cx, cy);
-           ctx.lineTo(cx + l.x * Math.min(1, bootProgress), cy + l.y * Math.min(1, bootProgress));
+       // --- BOOT 18.4 : TENSION GÉOMÉTRIQUE ---
+       bootStep += 0.015;
+       ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = 1.5;
+       const pts = [{x:0, y:-60}, {x:-55, y:35}, {x:55, y:35}];
+       pts.forEach(p => {
+           ctx.beginPath(); ctx.moveTo(cx, cy);
+           ctx.lineTo(cx + p.x * Math.min(1, bootStep), cy + p.y * Math.min(1, bootStep));
            ctx.stroke();
        });
-
-       if (bootProgress >= 1.5) {
-           active = true;
-           if(navigator.vibrate) navigator.vibrate([10, 50]);
-       }
+       if(bootStep > 1.8) { active = true; if(navigator.vibrate) navigator.vibrate([10, 40]); }
    } else {
        // --- RENDU ATOME RESSERRÉ ---
-       ctx.save();
-       ctx.translate(cx, cy);
-       ctx.rotate(rotation);
+       ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
 
-       // NOYAU m
-       ctx.shadowBlur = 15;
-       ctx.shadowColor = '#00FFFF';
-       ctx.fillStyle = '#FFF';
-       ctx.font = '200 32px Helvetica Neue';
-       ctx.textAlign = 'center';
-       ctx.fillText('m', 0, 12 + Math.sin(Date.now() * 0.003) * 3);
+       // Noyau m
+       ctx.shadowBlur = 15; ctx.shadowColor = 'cyan'; ctx.fillStyle = '#fff';
+       ctx.font = '200 30px Helvetica Neue'; ctx.textAlign = 'center';
+       ctx.fillText('m', 0, 10 + Math.sin(Date.now()*0.003)*3);
 
-       // ÉLECTRONS i
+       // Électrons i
        electrons.forEach(el => {
-           if(el.life < 1) el.life += 0.05;
-           const x = Math.cos(el.angle) * el.dist;
-           const y = Math.sin(el.angle) * el.dist;
-
-           // Halo Cyan Glacé
-           const grad = ctx.createRadialGradient(x, y, 0, x, y, 15);
-           grad.addColorStop(0, `rgba(224, 255, 255, ${el.life * 0.5})`);
-           grad.addColorStop(1, 'transparent');
-           ctx.fillStyle = grad;
-           ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI*2); ctx.fill();
-
-           // Particule
-           ctx.fillStyle = `rgba(255,255,255,${el.life})`;
-           ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI*2); ctx.fill();
+           if(el.o < 1) el.o += 0.05;
+           const x = Math.cos(el.a)*el.r, y = Math.sin(el.a)*el.r;
+           ctx.fillStyle = `rgba(224, 255, 255, ${el.o*0.4})`;
+           ctx.beginPath(); ctx.arc(x, y, 15, 0, 6.28); ctx.fill();
+           ctx.fillStyle = `rgba(255,255,255,${el.o})`;
+           ctx.beginPath(); ctx.arc(x, y, 1.5, 0, 6.28); ctx.fill();
+           ctx.font = '100 8px Helvetica Neue'; ctx.fillStyle = 'cyan';
+           ctx.fillText(el.t, x, y + 25);
        });
-
        ctx.restore();
    }
-
-   requestAnimationFrame(render);
+   requestAnimationFrame(animate);
 }
 
-// LANCEMENT NUCLÉAIRE
-REDLINE.ignite().then(() => {
-   render();
-});
+// ALLUMAGE DU RÉACTEUR
+Reactor.postMessage({ type: 'IGNITE' });
 </script>
 </body>
 </html>
