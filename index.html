@@ -3,63 +3,66 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-   <meta name="apple-mobile-web-app-capable" content="yes">
+   <title>THE MINY - SINGULARITY</title>
    <style>
-       :root { --neon: #0FF; --glass: rgba(255, 255, 255, 0.03); }
-       body, html { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100dvh; width: 100vw; position: fixed; font-family: "Helvetica Neue", sans-serif; }
+       :root { --neon: #0FF; --bg: #000; }
+       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+       body, html { margin: 0; padding: 0; background: var(--bg); overflow: hidden; height: 100dvh; font-family: 'Helvetica Neue', sans-serif; }
 
-       canvas { position: absolute; inset: 0; z-index: 1; filter: contrast(1.2) brightness(1.1); }
+       canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
 
-       #the-miny-core {
-           position: absolute; inset: 0; z-index: 10;
+       #interface-layer {
+           position: relative; z-index: 10; height: 100dvh;
            display: flex; flex-direction: column; justify-content: space-between;
-           padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 30px;
-           pointer-events: none; box-sizing: border-box;
+           padding: env(safe-area-inset-top) 25px env(safe-area-inset-bottom) 25px;
        }
 
-       header { padding-top: 20px; text-align: center; color: var(--neon); font-size: 10px; letter-spacing: 7px; font-weight: 200; opacity: 0.6; animation: pulse 4s infinite; }
+       #status { text-align: center; color: var(--neon); font-size: 10px; letter-spacing: 5px; font-weight: 200; padding-top: 20px; opacity: 0.8; }
 
-       footer { padding-bottom: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-
-       #input-zone {
-           width: 100%; max-width: 500px; height: 64px;
-           background: var(--glass); border-radius: 32px;
-           backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-           border: 0.5px solid rgba(0, 255, 255, 0.2);
-           display: flex; align-items: center; pointer-events: auto;
-           transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+       #input-container {
+           width: 100%; display: flex; flex-direction: column; align-items: center; padding-bottom: 40px;
        }
-       #input-zone:focus-within { background: rgba(0, 255, 255, 0.05); border-color: var(--neon); box-shadow: 0 0 30px rgba(0, 255, 255, 0.1); }
+
+       .quantum-pill {
+           width: 100%; max-width: 400px; height: 60px;
+           background: rgba(255,255,255,0.02); border-radius: 30px;
+           border: 0.5px solid rgba(0, 255, 255, 0.15);
+           backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+           display: flex; align-items: center; padding: 0 25px;
+           transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+       }
+
+       .quantum-pill:focus-within { border-color: var(--neon); background: rgba(0, 255, 255, 0.05); transform: translateY(-5px); }
 
        input {
            background: transparent; border: none; color: #FFF; width: 100%;
-           text-align: center; font-size: 14px; letter-spacing: 4px; outline: none;
-           text-transform: uppercase; font-weight: 200;
+           text-align: center; font-size: 13px; letter-spacing: 3px; outline: none;
+           text-transform: uppercase; font-weight: 300;
        }
 
-       #coordinates { font-size: 7px; color: var(--neon); opacity: 0.3; letter-spacing: 3px; }
-
-       @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+       #geo-data { font-size: 8px; color: var(--neon); opacity: 0.4; margin-top: 20px; letter-spacing: 2px; }
    </style>
 </head>
 <body>
 
-<canvas id="singularity"></canvas>
+<canvas id="stage"></canvas>
 
-<div id="the-miny-core">
-   <header>A-TOM : CONNECTÉ</header>
-   <footer>
-       <div id="input-zone"><input type="text" id="flux" placeholder="NOUVEL INTÉRÊT" autocomplete="off"></div>
-       <div id="coordinates">SCANNING...</div>
-   </footer>
+<div id="interface-layer">
+   <div id="status">A-TOM : SYNCHRONISATION</div>
+   <div id="input-container">
+       <div class="quantum-pill">
+           <input type="text" id="atom-flux" placeholder="INJECTER UN INTÉRÊT" autocomplete="off">
+       </div>
+       <div id="geo-data">LOCATING NANTES...</div>
+   </div>
 </div>
 
 <script>
-const canvas = document.getElementById('singularity'), ctx = canvas.getContext('2d');
-let w, h, dpr, particles = [];
+const canvas = document.getElementById('stage'), ctx = canvas.getContext('2d');
+let w, h, dpr, points = [];
 
-// STRUCTURE ATOMIQUE DE RÉFÉRENCE
-const nucleus = { x: 0, y: 0, size: 28, label: 'm' };
+// LE NOYAU EST LE CENTRE DE L'UNIVERS (m)
+const nucleus = { x: 0, y: 0, r: 35, label: 'm' };
 
 function resize() {
    dpr = window.devicePixelRatio || 1;
@@ -69,83 +72,93 @@ function resize() {
 }
 window.addEventListener('resize', resize); resize();
 
-document.getElementById('flux').addEventListener('keydown', (e) => {
+// INJECTION DE MATIÈRE (INTÉRÊTS)
+document.getElementById('atom-flux').addEventListener('keydown', (e) => {
    if(e.key === 'Enter' && e.target.value) {
-       particles.push({
-           text: e.target.value,
-           angle: Math.random() * Math.PI * 2,
-           distance: 300,
-           targetDist: 90 + (Math.random() * 40),
-           speed: 0.005 + (Math.random() * 0.01),
-           osc: Math.random() * 10,
-           seed: Math.random()
+       points.push({
+           x: (Math.random() - 0.5) * 100,
+           y: (Math.random() - 0.5) * 100,
+           oldX: (Math.random() - 0.5) * 110,
+           oldY: (Math.random() - 0.5) * 110,
+           label: e.target.value.toUpperCase(),
+           mass: 0.95 + Math.random() * 0.05
        });
        e.target.value = '';
    }
 });
 
-function draw() {
-   ctx.fillStyle = '#000';
-   ctx.fillRect(0, 0, w, h);
+function update() {
+   const cx = w/2, cy = h/2;
 
-   const cx = w / 2;
-   const cy = h / 2;
+   points.forEach(p => {
+       // Moteur Verlet (Vélocité naturelle)
+       const vx = (p.x - p.oldX) * p.mass;
+       const vy = (p.y - p.oldY) * p.mass;
+       p.oldX = p.x; p.oldY = p.y;
+       p.x += vx; p.y += vy;
 
+       // Attraction gravitationnelle vers m
+       const dx = 0 - p.x;
+       const dy = 0 - p.y;
+       const dist = Math.sqrt(dx*dx + dy*dy);
+       const force = (dist - 120) * 0.005; // Distance d'équilibre à 120px
+
+       p.x += (dx/dist) * force;
+       p.y += (dy/dist) * force;
+   });
+}
+
+function render() {
+   update();
+   ctx.clearRect(0, 0, w, h);
    ctx.save();
-   ctx.translate(cx, cy);
+   ctx.translate(w/2, h/2);
 
-   // DESSIN DU NOYAU M (Standard v17.2)
+   // DESSIN DU NOYAU (m)
    ctx.beginPath();
    ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
-   ctx.lineWidth = 1.5;
-   ctx.arc(0, 0, nucleus.size, 0, Math.PI * 2);
+   ctx.lineWidth = 1;
+   ctx.arc(0, 0, nucleus.r, 0, Math.PI*2);
    ctx.stroke();
 
    ctx.fillStyle = '#FFF';
-   ctx.font = '200 24px Helvetica';
+   ctx.font = '200 28px Helvetica';
    ctx.textAlign = 'center';
-   ctx.fillText(nucleus.label, 0, 9);
+   ctx.fillText(nucleus.label, 0, 10);
 
-   // LES ÉLECTRONS QUANTIQUES
-   particles.forEach((p, i) => {
-       p.angle += p.speed;
-       p.distance += (p.targetDist - p.distance) * 0.05;
-
-       // Effet de flottement organique
-       const drift = Math.sin(Date.now() * 0.002 + p.osc) * 5;
-       const x = Math.cos(p.angle) * (p.distance + drift);
-       const y = Math.sin(p.angle) * (p.distance + drift);
-
+   // DESSIN DES LIAISONS ET ÉLECTRONS
+   points.forEach(p => {
        // Ligne de tension géométrique
        ctx.beginPath();
-       ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
+       ctx.strokeStyle = 'rgba(0, 255, 255, 0.08)';
        ctx.moveTo(0, 0);
-       ctx.lineTo(x, y);
+       ctx.lineTo(p.x, p.y);
        ctx.stroke();
 
-       // Électron
+       // Électron (Particule d'intérêt)
        ctx.beginPath();
        ctx.fillStyle = '#0FF';
-       ctx.arc(x, y, 4, 0, Math.PI * 2);
+       ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
        ctx.fill();
 
-       // Label
-       ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+       // Label Sémantique
+       ctx.fillStyle = 'rgba(255,255,255,0.7)';
        ctx.font = '300 9px Helvetica';
        ctx.letterSpacing = "2px";
-       ctx.fillText(p.text.toUpperCase(), x, y + 22);
+       ctx.fillText(p.label, p.x, p.y + 20);
    });
 
    ctx.restore();
-   requestAnimationFrame(draw);
+   requestAnimationFrame(render);
 }
 
-// LOCALISATION TEMPS RÉEL
-navigator.geolocation.watchPosition(p => {
-   document.getElementById('coordinates').innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
+// GÉO-SCANNER NANTES
+navigator.geolocation.watchPosition(pos => {
+   document.getElementById('geo-data').innerText = `NANTES : ${pos.coords.latitude.toFixed(4)} | ${pos.coords.longitude.toFixed(4)}`;
+   document.getElementById('status').innerText = 'A-TOM : VEILLE ACTIVE';
 });
 
-draw();
+render();
 </script>
 </body>
 </html>
