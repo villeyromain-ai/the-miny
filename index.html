@@ -1,54 +1,130 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-   <title>the miny - v17.5 PROD</title>
+   <title>the miny - v17.5</title>
    <style>
-       body { margin: 0; background: #000; color: #fff; font-family: -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
-       #sceau { width: 100px; height: 100px; position: relative; margin-bottom: 50px; cursor: pointer; transition: transform 0.8s ease-in-out; }
-       .electron { width: 3px; height: 3px; background: #fff; position: absolute; }
-       #e1 { top: 0; left: 50%; }
+       /* DESIGN ATOMIQUE - NOIR OLED */
+       body { 
+           margin: 0; 
+           background: #000; 
+           color: #fff; 
+           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+           height: 100vh; 
+           display: flex; 
+           flex-direction: column; 
+           justify-content: center; 
+           align-items: center; 
+           overflow: hidden; 
+       }
+
+       /* LE SCEAU : Tension Géométrique */
+       #sceau { 
+           width: 80px; 
+           height: 80px; 
+           position: relative; 
+           margin-bottom: 60px; 
+           cursor: pointer; 
+           transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+       }
+
+       .electron { 
+           width: 3px; 
+           height: 3px; 
+           background: #fff; 
+           position: absolute; 
+           border-radius: 0; /* Lignes droites, pas de courbes */
+       }
+
+       /* Positionnement des 3 électrons originels */
+       #e1 { top: 0; left: 50%; transform: translateX(-50%); }
        #e2 { bottom: 0; left: 0; }
        #e3 { bottom: 0; right: 0; }
-       #input-flux { background: transparent; border: none; border-bottom: 1px solid #222; color: #fff; text-align: center; font-size: 1rem; outline: none; width: 60%; letter-spacing: 3px; }
-       #input-flux:focus { border-bottom: 1px solid #fff; }
-       #status { margin-top: 20px; font-size: 0.6rem; letter-spacing: 2px; color: #444; text-transform: uppercase; text-align: center; line-height: 1.5; }
+
+       /* CHAMP D'INTENTION (FLUX) */
+       #input-flux { 
+           background: transparent; 
+           border: none; 
+           border-bottom: 1px solid #222; 
+           color: #fff; 
+           text-align: center; 
+           font-size: 1.1rem; 
+           outline: none; 
+           width: 200px; 
+           letter-spacing: 4px; 
+           padding: 10px 0;
+           text-transform: uppercase;
+       }
+
+       #input-flux:focus { 
+           border-bottom: 1px solid #fff; 
+       }
+
+       /* AFFICHAGE DE RÉSONANCE */
+       #status { 
+           margin-top: 30px; 
+           font-size: 0.65rem; 
+           letter-spacing: 2px; 
+           color: #555; 
+           text-transform: uppercase; 
+           text-align: center; 
+           line-height: 1.8;
+           height: 50px;
+       }
+
+       .resonance-val { color: #fff; font-weight: bold; }
    </style>
 </head>
 <body>
-   <div id="sceau" onclick="activerRadar()">
+
+   <div id="sceau" onclick="activerCollision()">
        <div class="electron" id="e1"></div>
        <div class="electron" id="e2"></div>
        <div class="electron" id="e3"></div>
    </div>
-   <input type="text" id="input-flux" placeholder="INTERET" onkeydown="if(event.key==='Enter') activerRadar()">
-   <div id="status">Système Passif<br>Prêt pour Ancrage</div>
+
+   <input type="text" id="input-flux" placeholder="INTERÊT" onkeydown="if(event.key==='Enter') activerCollision()">
+
+   <div id="status">SYSTÈME PASSIF<br>EN ATTENTE D'ANCRAGE</div>
 
    <script>
-       function activerRadar() {
+       function activerCollision() {
            const val = document.getElementById('input-flux').value;
            if(!val) return;
 
-           document.getElementById('sceau').style.transform = 'rotate(720deg)';
-           document.getElementById('status').innerText = 'Localisation du Flux...';
+           // Animation du Spin
+           const sceau = document.getElementById('sceau');
+           sceau.style.transform = 'rotate(1080deg)';
+           document.getElementById('status').innerHTML = 'SCAN DE RÉSONANCE...';
 
+           // Appel de la localisation réelle
            if ("geolocation" in navigator) {
                navigator.geolocation.getCurrentPosition(function(position) {
                    const lat = position.coords.latitude;
                    const lon = position.coords.longitude;
-                   document.getElementById('status').innerHTML = 'RÉSONANCE ACTIVE<br>Nantes : ' + lat.toFixed(3) + ' / ' + lon.toFixed(3);
+
+                   // Simulation algorithmique de la Collision
+                   const intensite = Math.floor(Math.random() * 95) + 5; 
+                   const atomesProches = Math.floor(Math.random() * 12) + 1;
+
                    setTimeout(() => {
-                       alert('Flux "' + val + '" ancré à votre position.\nLa déferlante commence.');
-                   }, 500);
+                       document.getElementById('status').innerHTML = 
+                           'RÉSONANCE ACTIVE : <span class="resonance-val">' + intensite + '%</span><br>' +
+                           '<span class="resonance-val">' + atomesProches + '</span> ATOMES EN COLLISION À NANTES<br>' +
+                           lat.toFixed(3) + ' / ' + lon.toFixed(3);
+
+                       sceau.style.transform = 'rotate(0deg)';
+                   }, 1200);
+
                }, function(error) {
-                   alert("Erreur d'ancrage : Veuillez autoriser la localisation.");
-                   document.getElementById('status').innerText = 'Système Passif';
+                   alert("ERREUR D'ANCRAGE : Veuillez autoriser la localisation dans les réglages de votre iPhone.");
+                   document.getElementById('status').innerText = 'ANCRAGE ÉCHOUÉ';
                });
+           } else {
+               alert("Navigateur non compatible avec l'ancrage GPS.");
            }
        }
    </script>
 </body>
 </html>
-
