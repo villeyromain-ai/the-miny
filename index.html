@@ -7,74 +7,96 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>the miny</title>
 <style>
-  :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); }
-  body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, sans-serif; color: #fff; touch-action: none; }
-  canvas { display: block; position: absolute; top: 0; left: 0; }
+  :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
+  body { 
+      margin: 0; background: #000; overflow: hidden; 
+      height: -webkit-fill-available; /* Fix iOS Height */
+      font-family: -apple-system, sans-serif; color: #fff; touch-action: none; 
+  }
+  html { height: -webkit-fill-available; }
 
-  #ui { 
-      position: fixed; inset: 0; z-index: 10; pointer-events: none; 
-      display: flex; flex-direction: column; justify-content: space-between; 
-      padding: calc(var(--safe-top) + 20px) 30px calc(var(--safe-bottom) + 40px) 30px; 
+  #master-container {
+      position: relative; width: 100vw; height: 100vh;
+      display: flex; flex-direction: column;
+      padding-top: var(--sat); padding-bottom: var(--sab);
+      box-sizing: border-box;
   }
 
-  #voice { font-size: 10px; letter-spacing: 5px; color: #0FF; text-align: center; height: 40px; text-transform: uppercase; font-weight: 200; }
+  canvas { position: absolute; top: 0; left: 0; z-index: 1; }
 
-  #input-wrap { 
-      pointer-events: auto; background: rgba(255,255,255,0.05); 
-      border-radius: 40px; backdrop-filter: blur(15px); padding: 0 15px;
-      border: 1px solid rgba(255,255,255,0.1);
+  #ui-layer { 
+      position: relative; z-index: 10; flex: 1;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 20px 30px 40px 30px; pointer-events: none;
   }
-  input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 16px; outline: none; padding: 15px; letter-spacing: 4px; font-weight: 100; text-transform: uppercase; }
 
-  #gate { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; }
-  .btn { border: 1px solid #333; padding: 15px 30px; border-radius: 40px; font-size: 9px; letter-spacing: 5px; color: #666; }
+  #voice-output { font-size: 10px; letter-spacing: 5px; color: #0FF; text-align: center; font-weight: 200; text-transform: uppercase; }
+
+  #input-shell { 
+      pointer-events: auto; background: rgba(255,255,255,0.07); 
+      border-radius: 50px; backdrop-filter: blur(20px); 
+      border: 1px solid rgba(255,255,255,0.1); width: 100%;
+  }
+  input { 
+      background: transparent; border: none; color: #fff; width: 100%; 
+      text-align: center; font-size: 16px; outline: none; padding: 18px 0; 
+      letter-spacing: 4px; font-weight: 100; text-transform: uppercase; 
+  }
+
+  #init-overlay { 
+      position: fixed; inset: 0; z-index: 100; background: #000; 
+      display: flex; align-items: center; justify-content: center; 
+  }
+  .start-btn { border: 1px solid #444; padding: 15px 35px; border-radius: 50px; font-size: 9px; letter-spacing: 6px; color: #888; }
 </style>
 </head>
 <body>
 
-<div id="gate" onclick="init()">
-   <div class="btn">ÉVEILLER LE NOYAU</div>
+<div id="init-overlay" onclick="boot()">
+   <div class="start-btn">RÉALIGNER LE NOYAU</div>
 </div>
 
-<div id="ui">
-   <div id="voice">NOYAU PRÊT</div>
-   <div id="input-wrap"><input type="text" id="flow" placeholder="AJOUTER UN FLUX" autocomplete="off"></div>
+<div id="master-container">
+   <canvas id="canvas"></canvas>
+   <div id="ui-layer">
+       <div id="voice-output">INITIALISATION</div>
+       <div id="input-shell"><input type="text" id="flow-input" placeholder="..." autocomplete="off"></div>
+   </div>
 </div>
-
-<canvas id="c"></canvas>
 
 <script>
-const c = document.getElementById("c"), ctx = c.getContext("2d");
-const voice = document.getElementById("voice"), flow = document.getElementById("flow");
+const canvas = document.getElementById("canvas"), ctx = canvas.getContext("2d");
+const voice = document.getElementById("voice-output"), flowIn = document.getElementById("flow-input");
 
-let w, h, ratio, cSize, atoms = [], collisions = [], loc = "NANTES : RECHERCHE...";
+let w, h, ratio, coreSize, atoms = [], collisions = [], locationStr = "NANTES : SCAN...";
 
 function say(t) { voice.innerText = t; }
 
-function init() {
-   document.getElementById("gate").style.display = "none";
-   say("A-TOm ACTIVÉ");
+function boot() {
+   document.getElementById("init-overlay").style.display = "none";
+   say("A-TOm : ALIGNEMENT RÉUSSI");
    navigator.geolocation.getCurrentPosition(p => {
-       loc = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
+       locationStr = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
    });
 }
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
-   w = window.innerWidth; h = window.innerHeight;
-   c.width = w * ratio; c.height = h * ratio;
+   w = window.innerWidth;
+   h = window.innerHeight; // Capturer la hauteur réelle
+   canvas.width = w * ratio; canvas.height = h * ratio;
    ctx.scale(ratio, ratio);
-   cSize = w * 0.15; // Taille du noyau "m" réduite pour aérer
+   coreSize = Math.min(w, h) * 0.15;
 }
 window.addEventListener("resize", resize); resize();
 
-flow.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && flow.value) {
-       atoms.push({ l: flow.value, a: Math.random()*6, d: 400, td: 140, c: "#0FF" });
-       say(`FLUX ANALYSÉ : ${flow.value}`);
-       flow.value = "";
+flowIn.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && flowIn.value) {
+       atoms.push({ l: flowIn.value, a: Math.random()*6.2, d: 400, td: 120, c: "#0FF" });
+       say(`FLUX "${flowIn.value}" EN ORBITE`);
+       flowIn.value = "";
        setTimeout(() => {
-           collisions.push({ l: "PROXIMITÉ", a: Math.random()*6, d: 500, td: 220, c: "#FFF", m: "COLLISION RÉELLE" });
+           collisions.push({ l: "PROXIMITÉ", a: Math.random()*6.2, d: 500, td: 200, c: "#FFF", msg: "RÉSONANCE" });
            say("COLLISION DÉTECTÉE");
        }, 2000);
    }
@@ -86,29 +108,31 @@ function draw() {
    const time = Date.now() * 0.002;
 
    // NOYAU
-   ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1;
-   ctx.beginPath(); ctx.arc(0, 0, cSize/2, 0, Math.PI*2); ctx.stroke();
+   ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 1;
+   ctx.beginPath(); ctx.arc(0, 0, coreSize/2, 0, Math.PI*2); ctx.stroke();
    ctx.fillStyle = "#fff"; ctx.font = "100 20px Helvetica"; ctx.textAlign="center";
    ctx.fillText("m", 0, 7);
 
-   // FLUX ET COLLISIONS
-   [atoms, collisions].forEach((g, idx) => {
-       g.forEach(at => {
-           at.a += (idx === 0 ? 0.006 : -0.003);
-           at.d += (at.td - at.d) * 0.05;
+   // DYNAMIQUE DES ATOMES
+   [atoms, collisions].forEach((group, idx) => {
+       group.forEach(at => {
+           at.a += (idx === 0 ? 0.005 : -0.002);
+           at.d += (at.td - at.d) * 0.04;
            const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
            ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.4);
            ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2); ctx.stroke();
            ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
-           ctx.fillText(at.l.toUpperCase(), x, y + 26);
+           ctx.fillText(at.l.toUpperCase(), x, y + 25);
            if(idx === 1 && at.d < 250) {
-               ctx.fillStyle = "#0FF"; ctx.fillText(at.m, x, y - 22);
+               ctx.fillStyle = "#0FF"; ctx.fillText(at.msg, x, y - 20);
            }
        });
    });
 
-   ctx.globalAlpha = 0.2; ctx.font = "7px Helvetica"; 
-   ctx.fillText(loc, 0, h/2 - 60); // Remonté pour être visible
+   // SIGNATURE BASSE
+   ctx.globalAlpha = 0.2; ctx.font = "7px Helvetica";
+   ctx.fillText(locationStr, 0, (h/2) - 100);
+
    ctx.restore(); requestAnimationFrame(draw);
 }
 draw();
