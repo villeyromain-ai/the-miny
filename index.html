@@ -6,41 +6,22 @@
    <style>
        body { margin:0; background:#000; overflow:hidden; font-family: 'Helvetica Neue', sans-serif; }
        canvas { display:block; touch-action:none; }
-       #ui { position:fixed; bottom:40px; width:100%; text-align:center; pointer-events:none; }
-       input { pointer-events:auto; background:transparent; border:none; border-bottom:0.5px solid rgba(0,255,255,0.3); color:#fff; text-align:center; letter-spacing:5px; outline:none; padding:10px; width:200px; text-transform:uppercase; font-weight:200; font-size:12px; }
+       #ui { position:fixed; bottom:50px; width:100%; text-align:center; opacity:0; transition:0.5s; }
+       input { background:transparent; border:none; border-bottom:0.5px solid cyan; color:#fff; text-align:center; letter-spacing:5px; outline:none; width:220px; text-transform:uppercase; font-weight:100; font-size:11px; padding:10px; }
    </style>
 </head>
 <body>
 <canvas id="piano"></canvas>
-<div id="ui"><input type="text" id="i-input" placeholder="AJOUTER i"></div>
+<div id="ui"><input type="text" id="i" placeholder="RÉSONANCE"></div>
 
 <script>
 /**
-* LE RÉACTEUR (Le Châssis 19.5 déporté dans un thread fantôme)
-* Ce code s'exécute "ailleurs" pour ne pas perturber le piano.
-*/
-const reactorCode = `
-   self.onmessage = async function(e) {
-       if (e.data.type === 'IGNITE') {
-           // Calcul de l'entropie nucléaire sans bloquer le visuel
-           const data = new Uint8Array(1024);
-           self.crypto.getRandomValues(data);
-           const key = await self.crypto.subtle.digest('SHA-256', data);
-           self.postMessage({ type: 'BOMBE_READY', key: new Uint8Array(key)[0] });
-       }
-   }
-`;
-
-const blob = new Blob([reactorCode], { type: 'application/javascript' });
-const Reactor = new Worker(URL.createObjectURL(blob));
-
-/**
-* LE PIANO (La Carrosserie 18.4 - Rendu Pur)
+* LE PIANO - CARROSSERIE 18.4 (STRICTO SENSU)
+* Ce module est aveugle : il ne sait pas comment la bombe fonctionne.
 */
 const canvas = document.getElementById('piano');
 const ctx = canvas.getContext('2d');
-let w, h, rotation = 0, lastX = 0, dragging = false, active = false, bootStep = 0;
-let electrons = [];
+let w, h, step = 0, active = false, rotation = 0;
 
 function resize() {
    canvas.width = window.innerWidth * window.devicePixelRatio;
@@ -50,72 +31,44 @@ function resize() {
 }
 window.onresize = resize; resize();
 
-// ÉCOUTE DU PONT (A-TOM)
-Reactor.onmessage = (e) => {
-   if (e.data.type === 'BOMBE_READY') {
-       console.log("CHASSIS ALIMENTÉ. DÉMARRAGE PIANO.");
-       animate(); 
-   }
-};
-
-// INTERACTION
-canvas.onpointerdown = e => { dragging = true; lastX = e.clientX; };
-window.onpointermove = e => { if(dragging) { rotation += (e.clientX - lastX) * 0.01; lastX = e.clientX; }};
-window.onpointerup = () => dragging = false;
-
-document.getElementById('i-input').onkeydown = e => {
-   if(e.key === 'Enter' && e.target.value) {
-       electrons.push({ t: e.target.value.toUpperCase(), a: Math.random()*6.28 - rotation, r: 85, o: 0 });
-       e.target.value = '';
-       if(navigator.vibrate) navigator.vibrate(15);
-   }
-};
-
-/**
-* LA FRESQUE (Le mouvement)
-*/
-function animate() {
+function draw() {
    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
    const cx = w/2, cy = h/2;
 
    if (!active) {
-       // --- BOOT 18.4 : TENSION GÉOMÉTRIQUE ---
-       bootStep += 0.015;
-       ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = 1.5;
-       const pts = [{x:0, y:-60}, {x:-55, y:35}, {x:55, y:35}];
-       pts.forEach(p => {
+       // --- ANIMATION DE DÉMARRAGE 18.4 ---
+       step += 0.02;
+       ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = 1.2;
+       [{x:0, y:-50}, {x:-43, y:25}, {x:43, y:25}].forEach(p => {
            ctx.beginPath(); ctx.moveTo(cx, cy);
-           ctx.lineTo(cx + p.x * Math.min(1, bootStep), cy + p.y * Math.min(1, bootStep));
+           ctx.lineTo(cx + p.x * Math.min(1, step), cy + p.y * Math.min(1, step));
            ctx.stroke();
        });
-       if(bootStep > 1.8) { active = true; if(navigator.vibrate) navigator.vibrate([10, 40]); }
+       if(step > 2) { active = true; document.getElementById('ui').style.opacity = 1; }
    } else {
-       // --- RENDU ATOME RESSERRÉ ---
+       // --- LE NOYAU m ALIMENTÉ À DISTANCE ---
        ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
-
-       // Noyau m
        ctx.shadowBlur = 15; ctx.shadowColor = 'cyan'; ctx.fillStyle = '#fff';
        ctx.font = '200 30px Helvetica Neue'; ctx.textAlign = 'center';
        ctx.fillText('m', 0, 10 + Math.sin(Date.now()*0.003)*3);
-
-       // Électrons i
-       electrons.forEach(el => {
-           if(el.o < 1) el.o += 0.05;
-           const x = Math.cos(el.a)*el.r, y = Math.sin(el.a)*el.r;
-           ctx.fillStyle = `rgba(224, 255, 255, ${el.o*0.4})`;
-           ctx.beginPath(); ctx.arc(x, y, 15, 0, 6.28); ctx.fill();
-           ctx.fillStyle = `rgba(255,255,255,${el.o})`;
-           ctx.beginPath(); ctx.arc(x, y, 1.5, 0, 6.28); ctx.fill();
-           ctx.font = '100 8px Helvetica Neue'; ctx.fillStyle = 'cyan';
-           ctx.fillText(el.t, x, y + 25);
-       });
        ctx.restore();
+       rotation += 0.002; // Une rotation de veille très légère
    }
-   requestAnimationFrame(animate);
+   requestAnimationFrame(draw);
 }
 
-// ALLUMAGE DU RÉACTEUR
-Reactor.postMessage({ type: 'IGNITE' });
+// LANCEMENT DU PIANO SEUL
+draw();
+
+/**
+* APPEL AU CHÂSSIS DÉPORTÉ (Simulé ici par une promesse)
+* Le "Moteur" est ailleurs, il injecte de l'énergie quand il est prêt.
+*/
+console.log("A-TOM : RECHERCHE DU RÉACTEUR...");
+setTimeout(() => {
+   console.log("CHASSIS 19.5 DÉTECTÉ. ÉNERGIE DISPONIBLE.");
+   // Ici, le châssis pourrait injecter les électrons i
+}, 3000);
 </script>
 </body>
 </html>
