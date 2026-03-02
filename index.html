@@ -7,81 +7,65 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>the miny</title>
 <style>
-  body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, sans-serif; color: #fff; touch-action: none; -webkit-user-select: none; }
+  body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, sans-serif; color: #fff; touch-action: none; }
   canvas { display: block; }
-
-  #interface { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 60px 30px; }
-  #atom-voice { font-size: 11px; letter-spacing: 4px; color: #0FF; text-align: center; height: 60px; text-transform: uppercase; transition: 0.5s; font-weight: 200; }
-
-  #input-area { pointer-events: auto; background: rgba(255,255,255,0.03); border-radius: 30px; padding: 5px 20px; backdrop-filter: blur(10px); }
-  input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 16px; outline: none; padding: 12px; letter-spacing: 4px; font-weight: 100; text-transform: uppercase; }
-
-  #gate { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .pulse-btn { border: 1px solid #333; padding: 20px 40px; border-radius: 50px; font-size: 10px; letter-spacing: 6px; color: #666; }
+  #ui { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 60px 30px; }
+  #voice { font-size: 10px; letter-spacing: 5px; color: #0FF; text-align: center; height: 40px; text-transform: uppercase; font-weight: 200; text-shadow: 0 0 10px rgba(0,255,255,0.5); }
+  #input-wrap { pointer-events: auto; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 16px; outline: none; padding: 10px; letter-spacing: 5px; font-weight: 100; text-transform: uppercase; }
+  #gate { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; }
+  .btn { border: 1px solid #222; padding: 15px 30px; border-radius: 40px; font-size: 9px; letter-spacing: 5px; color: #444; }
 </style>
 </head>
 <body>
 
-<div id="gate" onclick="awaken()">
-   <div class="pulse-btn">ÉVEILLER LE NOYAU</div>
-   <div style="margin-top:20px; font-size:8px; color:#222; letter-spacing:2px;">THE MINY - v22.24</div>
+<div id="gate" onclick="init()">
+   <div class="btn">SYSTÈME NERVEUX v22.25</div>
 </div>
 
-<div id="interface">
-   <div id="atom-voice">INITIALISATION...</div>
-   <div id="input-area"><input type="text" id="flow-in" placeholder="AJOUTER UN FLUX" autocomplete="off"></div>
+<div id="ui">
+   <div id="voice">NOYAU PRÊT</div>
+   <div id="input-wrap"><input type="text" id="flow" placeholder="FLUX D'INTÉRÊT..." autocomplete="off"></div>
 </div>
 
-<canvas id="cvs"></canvas>
+<canvas id="c"></canvas>
 
 <script>
-const cvs = document.getElementById("cvs");
-const ctx = cvs.getContext("2d");
-const voice = document.getElementById("atom-voice");
-const flowIn = document.getElementById("flow-in");
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const voice = document.getElementById("voice");
+const flow = document.getElementById("flow");
 
-let w, h, ratio, cSize;
-let myAtoms = []; 
-let collisions = [];
-let loc = "NANTES : RECHERCHE...";
-let collisionActive = false;
+let w, h, ratio, cSize, atoms = [], collisions = [], loc = "NANTES : RECHERCHE...";
 
-function say(t) { 
-   voice.style.opacity = 0;
-   setTimeout(() => { voice.innerText = t; voice.style.opacity = 1; }, 400);
-}
+function say(t) { voice.innerText = t; }
 
-function awaken() {
+function init() {
    document.getElementById("gate").style.display = "none";
-   say("A-TOm ACTIVÉ. EN ATTENTE DE FLUX.");
+   say("A-TOm : RÉSONANCE ACTIVE");
    navigator.geolocation.getCurrentPosition(p => {
        loc = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
-       say("POSITION ANCRÉE. MAILLAGE PRÊT.");
-   }, () => { say("GPS INDISPONIBLE. MODE NOMADE."); });
+   });
 }
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
-   cvs.width = w * ratio; cvs.height = h * ratio;
+   c.width = w * ratio; c.height = h * ratio;
    ctx.scale(ratio, ratio);
-   cSize = w * 0.18;
+   cSize = w * 0.16;
 }
 window.addEventListener("resize", resize); resize();
 
-flowIn.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && flowIn.value) {
-       const v = flowIn.value;
-       myAtoms.push({ l: v, a: Math.random()*6, d: 400, td: 140, c: "#0FF" });
-       flowIn.value = "";
-       say(`FLUX ANALYSÉ : ${v}`);
-
-       // Simuler une collision après 3s
+flow.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && flow.value) {
+       atoms.push({ l: flow.value, a: Math.random()*6, d: 500, td: 130, c: "#0FF" });
+       const v = flow.value; flow.value = "";
+       say(`RECHERCHE DE COLLISION : ${v}`);
        setTimeout(() => {
-           collisions.push({ l: v, a: Math.random()*6, d: 500, td: 200, c: "#FFF", msg: "VEUT JOUER CE SOIR ?" });
-           say("COLLISION DÉTECTÉE : QUARTIER CENTRE");
-           collisionActive = true;
-       }, 3000);
+           collisions.push({ l: v, a: Math.random()*6, d: 600, td: 210, c: "#FFF", m: "REJOINDRE LE FLUX ?" });
+           say("COLLISION ÉTABLIE");
+       }, 2000);
    }
 });
 
@@ -90,43 +74,34 @@ function draw() {
    ctx.save(); ctx.translate(w/2, h/2);
    const time = Date.now() * 0.002;
 
-   // NOYAU
-   const p = (Math.sin(time*1.5)+1)/2;
-   ctx.shadowBlur = 15 * p; ctx.shadowColor = "#0FF";
-   ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1;
+   // NOYAU m
+   const p = (Math.sin(time*2)+1)/2;
+   ctx.shadowBlur = 10 * p; ctx.shadowColor = "#0FF";
+   ctx.strokeStyle = "rgba(255,255,255,0.8)";
    ctx.beginPath(); ctx.arc(0, 0, cSize/2, 0, Math.PI*2); ctx.stroke();
+   ctx.shadowBlur = 0; ctx.fillStyle = "#fff"; ctx.font = "100 20px Helvetica"; ctx.textAlign="center";
+   ctx.fillText("m", 0, 7);
 
-   ctx.shadowBlur = 0; ctx.fillStyle = "#fff"; ctx.font = "100 22px Helvetica"; ctx.textAlign="center";
-   ctx.fillText("m", 0, 8);
-
-   // DESSIN DES FLUX
-   [myAtoms, collisions].forEach((group, idx) => {
-       group.forEach(at => {
+   // DESSIN DES ORBITES
+   [atoms, collisions].forEach((g, idx) => {
+       g.forEach(at => {
            at.a += (idx === 0 ? 0.005 : -0.002);
-           if(at.d > at.td) at.td += (at.d - at.td) * 0.1; 
            at.d += (at.td - at.d) * 0.05;
-
-           const x = Math.cos(at.a)*at.d; const y = Math.sin(at.a)*at.d;
-
-           ctx.globalAlpha = (idx === 0 ? 1 : 0.4);
-           ctx.strokeStyle = at.c; ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2); ctx.stroke();
-
+           const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
+           ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.3);
+           ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI*2); ctx.stroke();
            ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
-           ctx.fillText(at.l.toUpperCase(), x, y + 26);
-
-           // Affichage message si collision
+           ctx.fillText(at.l.toUpperCase(), x, y + 24);
            if(idx === 1 && at.d < 220) {
-               ctx.fillStyle = "#0FF"; ctx.font = "italic 7px Helvetica";
-               ctx.fillText(at.msg, x, y - 20);
+               ctx.fillStyle = "#0FF"; ctx.fillText(at.m, x, y - 18);
+               ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(x,y); 
+               ctx.strokeStyle = "rgba(0,255,255,0.1)"; ctx.stroke();
            }
        });
    });
 
-   // SIGNATURE
-   ctx.globalAlpha = 0.2; ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
-   ctx.fillText(loc, 0, h/2 - 80);
-   ctx.restore();
-   requestAnimationFrame(draw);
+   ctx.globalAlpha = 0.2; ctx.font = "7px Helvetica"; ctx.fillText(loc, 0, h/2 - 90);
+   ctx.restore(); requestAnimationFrame(draw);
 }
 draw();
 </script>
