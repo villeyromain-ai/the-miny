@@ -4,30 +4,30 @@
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
    <meta name="apple-mobile-web-app-capable" content="yes">
-   <title>the miny</title>
    <style>
        :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
+       /* Verrouillage total du viewport */
        body, html { 
            margin: 0; padding: 0; background: #000; overflow: hidden; 
-           height: 100dvh; width: 100vw; position: fixed;
+           height: 100%; width: 100%; position: fixed;
            font-family: -apple-system, sans-serif;
        }
-       /* Le Canvas est le fond de scène total */
-       canvas { position: absolute; inset: 0; z-index: 1; touch-action: none; }
 
-       /* L'UI flotte par-dessus sans influencer le layout */
-       #ui-layer {
-           position: absolute; inset: 0; z-index: 10;
+       /* LE CANVAS : C'est la base, il ne dépend d'aucun conteneur */
+       #stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+
+       /* L'INTERFACE : Elle flotte par dessus, totalement indépendante */
+       #ui {
+           position: fixed; inset: 0; z-index: 10;
            display: flex; flex-direction: column;
-           padding: calc(var(--sat) + 15px) 20px calc(var(--sab) + 15px) 20px;
+           padding: calc(var(--sat) + 20px) 20px calc(var(--sab) + 20px) 20px;
            pointer-events: none; box-sizing: border-box;
        }
-       #header { flex: 0; text-align: center; color: #0FF; font-size: 9px; letter-spacing: 5px; opacity: 0.8; }
-       #spacer { flex: 1; }
-       #footer { flex: 0; display: flex; flex-direction: column; align-items: center; }
+       #header { text-align: center; color: #0FF; font-size: 10px; letter-spacing: 5px; text-transform: uppercase; font-weight: 300; }
+       #footer { margin-top: auto; display: flex; flex-direction: column; align-items: center; }
        #pill { 
-           width: 100%; max-width: 380px; background: rgba(255,255,255,0.08); 
-           border-radius: 50px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
+           width: 100%; max-width: 400px; background: rgba(255,255,255,0.08); 
+           border-radius: 50px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.12);
            pointer-events: auto;
        }
        input { 
@@ -35,85 +35,78 @@
            text-align: center; font-size: 16px; outline: none; padding: 18px 0; 
            letter-spacing: 2px; text-transform: uppercase; font-weight: 200;
        }
-       #tag { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 10px; letter-spacing: 2px; }
-       #boot { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #555; font-size: 10px; letter-spacing: 4px; }
+       #nantes { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 15px; letter-spacing: 2px; }
+
+       #boot { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #444; font-size: 10px; letter-spacing: 5px; }
    </style>
 </head>
 <body>
 
-<div id="boot" onclick="this.style.display='none'">STABILISATION V17.5</div>
-
-<div id="ui-layer">
-   <div id="header">A-TOM : ACTIF</div>
-   <div id="spacer"></div>
-   <div id="footer">
-       <div id="pill"><input type="text" id="flow" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
-       <div id="tag">NANTES : 47.349 / -1.541</div>
-   </div>
-</div>
+<div id="boot" onclick="this.style.display='none'">STABILISER LE SYSTÈME</div>
 
 <canvas id="stage"></canvas>
 
+<div id="ui">
+   <div id="header">A-TOM : VEILLE</div>
+   <div id="footer">
+       <div id="pill"><input type="text" id="inp" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
+       <div id="nantes">NANTES : 47.349 / -1.541</div>
+   </div>
+</div>
+
 <script>
 const stage = document.getElementById('stage'), ctx = stage.getContext('2d');
-const flow = document.getElementById('flow');
+const inp = document.getElementById('inp');
 let w, h, ratio, atoms = [];
 
 function sync() {
    ratio = window.devicePixelRatio || 1;
-   w = window.innerWidth; h = window.innerHeight;
+   // On utilise visualViewport pour contrer les bugs de Safari
+   w = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+   h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
    stage.width = w * ratio; stage.height = h * ratio;
    ctx.scale(ratio, ratio);
 }
-window.addEventListener('resize', sync); sync();
 
-flow.addEventListener('keydown', (e) => {
-   if(e.key === 'Enter' && flow.value) {
-       atoms.push({ 
-           label: flow.value, 
-           angle: Math.random() * 6.28, 
-           dist: 180, 
-           targetDist: 85, // Orbite resserrée selon charte
-           color: '#0FF' 
-       });
-       flow.value = '';
+window.addEventListener('resize', sync);
+if(window.visualViewport) window.visualViewport.addEventListener('resize', sync);
+sync();
+
+inp.addEventListener('keydown', (e) => {
+   if(e.key === 'Enter' && inp.value) {
+       atoms.push({ label: inp.value, angle: Math.random()*6, d: 200, targetD: 85 });
+       inp.value = '';
    }
 });
 
 function draw() {
    ctx.clearRect(0, 0, w, h);
 
-   // CALCUL DU CENTRE GÉOMÉTRIQUE PUR (Indépendant du DOM)
+   // CENTRE ABSOLU DU VIEWPORT VISIBLE
+   // Quoi qu'il arrive, on tape au milieu du canvas
    const cx = w / 2;
    const cy = h / 2;
 
    ctx.save();
    ctx.translate(cx, cy);
 
-   // NOYAU CENTRAL (Design épuré ligne droite)
+   // NOYAU
    ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
    ctx.lineWidth = 1;
-   ctx.beginPath(); 
-   ctx.arc(0, 0, 26, 0, Math.PI * 2); 
-   ctx.stroke();
-
-   ctx.fillStyle = '#FFF';
-   ctx.font = '200 20px Helvetica';
-   ctx.textAlign = 'center';
+   ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI*2); ctx.stroke();
+   ctx.fillStyle = '#FFF'; ctx.font = '200 20px Helvetica'; ctx.textAlign = 'center';
    ctx.fillText('m', 0, 7);
 
-   // ÉLECTRONS (3 électrons max selon charte)
-   atoms.slice(-3).forEach(at => {
-       at.angle += 0.008;
-       at.dist += (at.targetDist - at.dist) * 0.1;
-       const x = Math.cos(at.angle) * at.dist;
-       const y = Math.sin(at.angle) * at.dist;
+   // ORBITES
+   atoms.forEach(at => {
+       at.angle += 0.01;
+       at.d += (at.targetD - at.d) * 0.1;
+       const x = Math.cos(at.angle) * at.d;
+       const y = Math.sin(at.angle) * at.d;
 
-       ctx.strokeStyle = at.color;
+       ctx.strokeStyle = '#0FF';
        ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2); ctx.stroke();
-
-       ctx.fillStyle = '#FFF';
-       ctx.font = '300 9px Helvetica';
+       ctx.fillStyle = '#FFF'; ctx.font = '300 9px Helvetica';
        ctx.fillText(at.label.toUpperCase(), x, y + 25);
    });
 
