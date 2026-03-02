@@ -7,18 +7,18 @@
        :root { --void: #000000; --cyan: #00FFFF; --ice: #E0FFFF; }
        body, html { margin:0; padding:0; background: var(--void); overflow:hidden; height:100dvh; width:100vw; position:fixed; font-family: 'Helvetica Neue', sans-serif; }
 
-       canvas { display: block; z-index: 1; touch-action: none; }
+       canvas { display: block; z-index: 1; touch-action: none; position: absolute; inset: 0; }
 
        /* UI OVERLAY */
-       #ui { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 40px; }
-       header { color: var(--cyan); font-size: 8px; letter-spacing: 10px; font-weight: 100; text-align: center; opacity: 0.4; }
+       #ui { position: absolute; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 40px; opacity: 0; transition: opacity 1s ease; }
+       header { color: var(--cyan); font-size: 8px; letter-spacing: 10px; font-weight: 100; text-align: center; opacity: 0.4; margin-top: 20px; }
        .input-zone { pointer-events: auto; width: 100%; max-width: 400px; margin: 0 auto; border-bottom: 0.5px solid rgba(0, 255, 255, 0.2); }
        input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 13px; outline: none; padding: 20px 0; letter-spacing: 5px; text-transform: uppercase; font-weight: 200; }
 
        /* BOOT SEQUENCE 18.4 (Lignes Droites Uniquement) */
-       #boot-layer { position: fixed; inset: 0; background: var(--void); z-index: 100; display: flex; align-items: center; justify-content: center; }
-       svg { width: 200px; height: 200px; }
-       .boot-line { stroke: var(--cyan); stroke-width: 1; fill: none; stroke-dasharray: 200; stroke-dashoffset: 200; transition: stroke-dashoffset 1.5s cubic-bezier(0.19, 1, 0.22, 1); }
+       #boot-layer { position: fixed; inset: 0; background: var(--void); z-index: 100; display: flex; align-items: center; justify-content: center; transition: opacity 1s ease; }
+       svg { width: 150px; height: 150px; }
+       .boot-line { stroke: var(--cyan); stroke-width: 1.5; fill: none; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1.2s cubic-bezier(0.19, 1, 0.22, 1); }
    </style>
 </head>
 <body>
@@ -28,35 +28,34 @@
        <line class="boot-line" id="l1" x1="50" y1="50" x2="50" y2="10" />
        <line class="boot-line" id="l2" x1="50" y1="50" x2="15" y2="75" />
        <line class="boot-line" id="l3" x1="50" y1="50" x2="85" y2="75" />
-       <circle cx="50" cy="50" r="1" fill="white" />
+       <circle cx="50" cy="50" r="1.5" fill="white" />
    </svg>
 </div>
 
 <canvas id="atom-core"></canvas>
 
 <div id="ui">
-   <header>A-TOM : QUANTUM ENGINE</header>
+   <header>A-TOM : VEILLE ACTIVE</header>
    <div class="input-zone"><input type="text" id="flow" placeholder="AJOUTER i" autocomplete="off"></div>
 </div>
 
 <script>
-/** * CHASSIS 19.5 (REDLINE) 
+/** * SECTION 1 : CHASSIS 19.5 (REDLINE) 
 */
 const QUANTUM_REDLINE = {
    async harvest() {
+       // Extraction réelle du bruit entropique
        const data = new Float32Array(1024);
        window.crypto.getRandomValues(data);
-       const hash = await crypto.subtle.digest('SHA-512', data);
-       console.log("A-TOM >>> MASTER KEY GENERATED FROM COSMIC NOISE.");
-       return hash;
+       return await crypto.subtle.digest('SHA-512', data);
    }
 };
 
 /**
-* VISUEL 18.4 + CARROSSERIE
+* SECTION 2 : CARROSSERIE 18.4 + RENDU
 */
 const canvas = document.getElementById('atom-core'), ctx = canvas.getContext('2d');
-const flow = document.getElementById('flow'), boot = document.getElementById('boot-layer');
+const flow = document.getElementById('flow'), boot = document.getElementById('boot-layer'), ui = document.getElementById('ui');
 let w, h, dpr, electrons = [], rotation = 0, isDragging = false, lastX = 0;
 
 function setup() {
@@ -67,11 +66,11 @@ function setup() {
 }
 window.addEventListener('resize', setup); setup();
 
-// Interaction : Spin par le toucher uniquement
+// Interaction : Spin par le toucher uniquement (v18.4)
 canvas.addEventListener('pointerdown', e => { isDragging = true; lastX = e.clientX; });
 window.addEventListener('pointermove', e => {
    if (isDragging) {
-       rotation += (e.clientX - lastX) * 0.005;
+       rotation += (e.clientX - lastX) * 0.006;
        lastX = e.clientX;
    }
 });
@@ -87,31 +86,35 @@ flow.addEventListener('keydown', (e) => {
            o: 0
        });
        flow.value = '';
-       if ("vibrate" in navigator) navigator.vibrate(15);
+       if ("vibrate" in navigator) navigator.vibrate(12);
    }
 });
 
 function render() {
-   ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+   ctx.fillStyle = 'black';
    ctx.fillRect(0, 0, w, h);
-   const cx = w/2, cy = h/2;
 
+   // Persistance légère
+   ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+   ctx.fillRect(0, 0, w, h);
+
+   const cx = w/2, cy = h/2;
    ctx.save();
    ctx.translate(cx, cy);
    ctx.rotate(rotation);
 
-   // Noyau m (Flottant)
+   // Noyau m flottant (Standard the miny)
    ctx.shadowBlur = 15; ctx.shadowColor = "cyan";
-   ctx.fillStyle = "#fff"; ctx.font = "200 26px Helvetica Neue"; ctx.textAlign="center";
-   ctx.fillText("m", 0, 10 + Math.sin(Date.now()*0.002)*3);
+   ctx.fillStyle = "#fff"; ctx.font = "200 28px Helvetica Neue"; ctx.textAlign="center";
+   ctx.fillText("m", 0, 10 + Math.sin(Date.now()*0.0025)*3);
    ctx.shadowBlur = 0;
 
-   // Électrons i (Standard boussole)
+   // Électrons i
    electrons.forEach(el => {
-       if(el.o < 1) el.o += 0.04;
+       if(el.o < 1) el.o += 0.05;
        const x = Math.cos(el.a) * el.r, y = Math.sin(el.a) * el.r;
 
-       // Halo Cyan Glacé
+       // Halo Cyan Glacé (v18.4)
        const g = ctx.createRadialGradient(x, y, 0, x, y, 15);
        g.addColorStop(0, `rgba(224, 255, 255, ${el.o * 0.4})`);
        g.addColorStop(1, 'transparent');
@@ -121,8 +124,8 @@ function render() {
        ctx.fillStyle = `rgba(255,255,255,${el.o})`;
        ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI*2); ctx.fill();
 
-       ctx.font = "100 8px Helvetica Neue"; ctx.letterSpacing = "3px";
-       ctx.fillStyle = `rgba(0, 255, 255, ${el.o * 0.5})`;
+       ctx.font = "100 8px Helvetica Neue"; ctx.letterSpacing = "4px";
+       ctx.fillStyle = `rgba(0, 255, 255, ${el.o * 0.6})`;
        ctx.fillText(el.t, x, y + 25);
    });
 
@@ -130,23 +133,29 @@ function render() {
    requestAnimationFrame(render);
 }
 
-// BOOT SEQUENCE 18.4
-async function start() {
+// SEQUENCE DE BOOT 18.4 + CHASSIS
+async function ignite() {
+   // 1. Châssis : Récolte entropique (Bruit cosmique)
    await QUANTUM_REDLINE.harvest();
 
-   // Animation des lignes
-   document.querySelectorAll('.boot-line').forEach(l => l.style.strokeDashoffset = "0");
+   // 2. Carrosserie : Animation des 3 lignes droites
+   const lines = document.querySelectorAll('.boot-line');
+   setTimeout(() => {
+       lines.forEach(l => l.style.strokeDashoffset = "0");
+   }, 300);
 
+   // 3. Transition vers l'Atome
    setTimeout(() => {
        boot.style.opacity = "0";
+       ui.style.opacity = "1";
        setTimeout(() => {
            boot.remove();
            render();
        }, 1000);
-   }, 2000);
+   }, 2200);
 }
 
-start();
+ignite();
 </script>
 </body>
 </html>
