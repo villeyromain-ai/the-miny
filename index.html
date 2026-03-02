@@ -3,152 +3,125 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-   <meta name="apple-mobile-web-app-capable" content="yes">
    <style>
-       :root { --ice: #E0FFFF; --cyan: #00FFFF; --void: #000203; }
-       body, html { margin:0; padding:0; background: var(--void); overflow:hidden; height:100dvh; width:100vw; position:fixed; font-family: 'Helvetica Neue', sans-serif; }
+       :root { --glace: #E0FFFF; --cyan: #00FFFF; --void: #000000; }
+       body, html { margin:0; padding:0; background: var(--void); overflow:hidden; height:100dvh; width:100vw; position:fixed; color: #fff; }
 
-       canvas { position: absolute; inset:0; z-index: 1; pointer-events: none; }
+       /* Suppression totale de l'UI classique */
+       canvas { position: absolute; inset:0; z-index: 1; }
 
-       #quantum-ui {
-           position: absolute; inset: 0; z-index: 10; pointer-events: none;
-           display: flex; flex-direction: column; justify-content: space-between;
-           padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 40px;
+       #invisible-input {
+           position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%);
+           z-index: 10; width: 80%; pointer-events: auto;
        }
-
-       header { color: var(--cyan); font-size: 8px; letter-spacing: 12px; font-weight: 100; text-align: center; opacity: 0.5; text-shadow: 0 0 10px var(--cyan); }
-
-       .input-zone {
-           width: 100%; max-width: 500px; margin: 0 auto;
-           border-top: 0.5px solid rgba(0, 255, 255, 0.1);
-           pointer-events: auto; text-align: center;
-       }
-
        input {
-           background: transparent; border: none; color: #fff; width: 100%;
-           text-align: center; font-size: 13px; outline: none; padding: 25px 0;
-           letter-spacing: 6px; text-transform: uppercase; font-weight: 200;
-           opacity: 0.7; transition: opacity 0.5s;
+           background: transparent; border: none; color: rgba(255,255,255,0.7);
+           width: 100%; text-align: center; font-size: 11px; outline: none;
+           letter-spacing: 10px; text-transform: uppercase; font-weight: 100;
        }
-       input:focus { opacity: 1; }
-       input::placeholder { color: var(--cyan); opacity: 0.3; }
 
-       #coordinates { font-size: 6px; color: var(--cyan); opacity: 0.3; letter-spacing: 4px; position: absolute; bottom: 15px; width: 100%; text-align: center; left: 0; }
+       #hud {
+           position: absolute; top: 60px; width: 100%; text-align: center;
+           font-size: 8px; letter-spacing: 15px; font-weight: 100; opacity: 0.4;
+           color: var(--cyan); pointer-events: none; z-index: 5;
+       }
    </style>
 </head>
 <body>
 
-<canvas id="quantum-canvas"></canvas>
-
-<div id="quantum-ui">
-   <header>A-TOM : SUPRA-CONSCIENCE</header>
-   <div class="input-zone">
-       <input type="text" id="stream" placeholder="RESONANCE DATA" autocomplete="off">
-   </div>
-   <div id="coordinates">NANTES // GRID.SCAN.ACTIVE</div>
-</div>
+<div id="hud">RÉSONANCE ACTIVE</div>
+<canvas id="quantum"></canvas>
+<div id="invisible-input"><input type="text" id="stream" placeholder="..." autocomplete="off"></div>
 
 <script>
-const canvas = document.getElementById('quantum-canvas'), ctx = canvas.getContext('2d');
-const input = document.getElementById('stream');
-let w, h, dpr, particles = [], shards = [];
+const canvas = document.getElementById('quantum'), ctx = canvas.getContext('2d');
+const stream = document.getElementById('stream');
+let w, h, dpr, electrons = [], pulses = [];
 
-function init() {
+function sync() {
    dpr = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
    canvas.width = w * dpr; canvas.height = h * dpr;
    ctx.scale(dpr, dpr);
 }
-window.addEventListener('resize', init); init();
+window.addEventListener('resize', sync); sync();
 
-input.addEventListener('keydown', (e) => {
-   if(e.key === 'Enter' && input.value) {
-       // Ajout d'une entité quantique
-       particles.push({
-           label: input.value.toUpperCase(),
-           orbit: 120 + Math.random() * 60,
-           angle: Math.random() * Math.PI * 2,
-           speed: (Math.random() - 0.5) * 0.015,
-           jump: 0,
-           noiseOffset: Math.random() * 1000
+// L'atome resserré avec 'm' au noyau
+stream.addEventListener('keydown', (e) => {
+   if(e.key === 'Enter' && stream.value) {
+       electrons.push({
+           t: stream.value.toUpperCase(),
+           a: Math.random() * Math.PI * 2,
+           r: 70 + Math.random() * 40, // Atome resserré
+           v: 0.01 + Math.random() * 0.02,
+           life: 0
        });
-       // Onde de choc céleste
-       shards.push({ r: 20, a: 1.0 });
-       input.value = '';
+       // Pulsations cyan glacé lors de la connexion
+       pulses.push({ r: 40, a: 1.0 }); 
+       stream.value = '';
    }
 });
 
 function draw() {
-   // Effet de traînée quantique (nébuleuse)
-   ctx.fillStyle = 'rgba(0, 2, 3, 0.12)';
+   // Effet de vide quantique : accumulation de lumière
+   ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
    ctx.fillRect(0, 0, w, h);
 
    const cx = w/2, cy = h/2;
 
-   // 1. ONDES DE RÉSONANCE (Céleste)
-   shards.forEach((s, i) => {
+   // 1. PULSATIONS CYAN GLACÉ
+   pulses.forEach((p, i) => {
        ctx.beginPath();
-       ctx.arc(cx, cy, s.r, 0, Math.PI*2);
-       ctx.strokeStyle = `rgba(224, 255, 255, ${s.a * 0.4})`;
+       ctx.arc(cx, cy, p.r, 0, Math.PI*2);
+       ctx.strokeStyle = `rgba(0, 255, 255, ${p.a * 0.5})`;
        ctx.lineWidth = 0.5;
        ctx.stroke();
-       s.r += 5; s.a -= 0.012;
-       if(s.a <= 0) shards.splice(i, 1);
+       p.r += 8; p.a -= 0.02;
+       if(p.a <= 0) pulses.splice(i, 1);
    });
 
    ctx.save();
    ctx.translate(cx, cy);
 
-   // 2. LA SINGULARITÉ "m" (Cœur de l'Atome)
-   // Aura glacée pulsante
-   const pulse = Math.sin(Date.now() * 0.002) * 5;
-   const gCore = ctx.createRadialGradient(0, 0, 0, 0, 0, 40 + pulse);
-   gCore.addColorStop(0, 'rgba(0, 255, 255, 0.2)');
-   gCore.addColorStop(1, 'rgba(0, 255, 255, 0)');
-   ctx.fillStyle = gCore;
-   ctx.beginPath(); ctx.arc(0, 0, 40 + pulse, 0, Math.PI*2); ctx.fill();
+   // 2. LE NOYAU 'm' FLOTTANT
+   ctx.shadowBlur = 20; ctx.shadowColor = "rgba(0, 255, 255, 0.6)";
+   ctx.fillStyle = "#fff";
+   ctx.font = "200 24px 'Helvetica Neue'";
+   ctx.textAlign = "center";
+   // Mouvement de flottement léger
+   const floatY = Math.sin(Date.now() * 0.001) * 3;
+   ctx.fillText("m", 0, 8 + floatY);
 
-   ctx.fillStyle = "#FFF"; ctx.font = "100 28px Helvetica Neue"; ctx.textAlign="center";
-   ctx.shadowBlur = 15; ctx.shadowColor = "cyan";
-   ctx.fillText("m", 0, 10);
-   ctx.shadowBlur = 0;
+   // 3. ÉLECTRONS : BOUSSOLES ET HALOS
+   electrons.forEach(e => {
+       e.a += e.v;
+       e.life += 0.01;
 
-   // 3. NUAGES D'ÉLECTRONS (Sauts Quantiques)
-   particles.forEach(p => {
-       p.angle += p.speed;
-       p.jump++;
+       // Position boussole
+       const x = Math.cos(e.a) * e.r;
+       const y = Math.sin(e.a) * e.r;
 
-       // Simulation de l'incertitude de position
-       let x = Math.cos(p.angle) * p.orbit;
-       let y = Math.sin(p.angle) * p.orbit;
+       // Halo blanc-cyan glacé constant
+       const g = ctx.createRadialGradient(x, y, 0, x, y, 20);
+       g.addColorStop(0, 'rgba(224, 255, 255, 0.4)');
+       g.addColorStop(1, 'rgba(0, 255, 255, 0)');
+       ctx.fillStyle = g;
+       ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI*2); ctx.fill();
 
-       if (p.jump % 30 === 0) { // Saut quantique toutes les 30 frames
-           x += (Math.random() - 0.5) * 20;
-           y += (Math.random() - 0.5) * 20;
-       }
+       // L'électron (La boussole)
+       ctx.fillStyle = "#fff";
+       ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI*2); ctx.fill();
 
-       // Halo individuel blanc-cyan glacé
-       const gPart = ctx.createRadialGradient(x, y, 0, x, y, 18);
-       gPart.addColorStop(0, 'rgba(224, 255, 255, 0.5)');
-       gPart.addColorStop(1, 'rgba(0, 255, 255, 0)');
-       ctx.fillStyle = gPart;
-       ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI*2); ctx.fill();
-
-       // Le Quark (Point central)
-       ctx.fillStyle = "#FFF";
-       ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI*2); ctx.fill();
-
-       // Label Céleste
-       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-       ctx.font = "200 9px Helvetica Neue";
-       ctx.letterSpacing = "3px";
-       ctx.fillText(p.label, x, y + 25);
+       // Texte sémantique estompé
+       ctx.globalAlpha = Math.min(e.life, 0.6);
+       ctx.font = "100 8px 'Helvetica Neue'";
+       ctx.fillText(e.t, x, y + 20);
+       ctx.globalAlpha = 1.0;
    });
 
    ctx.restore();
    requestAnimationFrame(draw);
 }
-
 draw();
 </script>
 </body>
