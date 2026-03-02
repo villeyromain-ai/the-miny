@@ -4,114 +4,109 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>the miny - v22.22 Collision</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>the miny</title>
 <style>
   body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, sans-serif; color: #fff; touch-action: none; }
   canvas { display: block; }
-  #ui-layer { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 50px 25px; }
-  #collision-alert { font-size: 11px; letter-spacing: 3px; color: #fff; text-align: center; opacity: 0; transition: 0.5s; background: rgba(0,255,255,0.1); padding: 10px; border-radius: 20px; align-self: center; }
-  #input-box { pointer-events: auto; width: 100%; text-align: center; }
-  input { background: transparent; border: none; border-bottom: 1px solid #222; color: #fff; width: 80%; text-align: center; font-size: 16px; outline: none; padding: 10px; letter-spacing: 4px; font-weight: 100; text-transform: uppercase; }
+
+  #ui { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 60px 30px; }
+  #atom-voice { font-size: 13px; font-weight: 200; letter-spacing: 3px; color: #0FF; text-align: center; height: 50px; text-transform: uppercase; }
+
+  #input-wrap { pointer-events: auto; border-bottom: 1px solid #111; }
+  input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 18px; outline: none; padding: 15px; letter-spacing: 6px; font-weight: 100; text-transform: uppercase; }
+
+  #gate { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; }
 </style>
 </head>
 <body>
 
-<div id="ui-layer">
-   <div id="collision-alert">COLLISION DÉTECTÉE : NANTES CENTRE</div>
-   <div id="input-box"><input type="text" id="main-in" placeholder="AJOUTER UN FLUX..." autocomplete="off"></div>
+<div id="gate" onclick="awaken()">
+   <div style="text-align:center; letter-spacing:10px; font-size:11px; color:#444;">EVEIL DU NOYAU</div>
 </div>
 
-<canvas id="minyCanvas"></canvas>
+<div id="ui">
+   <div id="atom-voice">SYSTÈME EN ATTENTE</div>
+   <div id="input-wrap"><input type="text" id="flow-in" placeholder="..." autocomplete="off"></div>
+</div>
+
+<canvas id="cvs"></canvas>
 
 <script>
-const canvas = document.getElementById("minyCanvas");
-const ctx = canvas.getContext("2d");
-const alertBox = document.getElementById("collision-alert");
-const mainIn = document.getElementById("main-in");
+const cvs = document.getElementById("cvs");
+const ctx = cvs.getContext("2d");
+const voice = document.getElementById("atom-voice");
+const flowIn = document.getElementById("flow-in");
 
-let width, height, ratio, coreSize;
-let myInterests = []; 
-let collisions = []; // Atomes d'autres utilisateurs/entreprises
-let isAttracting = false;
+let w, h, ratio, cSize;
+let myAtoms = []; 
+let collisions = [];
+let loc = "SCAN...";
+
+function say(t) { voice.innerText = t; }
+
+function awaken() {
+   document.getElementById("gate").style.display = "none";
+   say("A-TOm CONNECTÉ");
+   navigator.geolocation.getCurrentPosition(p => {
+       loc = `${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
+       say("RÉSONANCE NANTES : ACTIVE");
+   });
+}
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
-   width = window.innerWidth; height = window.innerHeight;
-   canvas.width = width * ratio; canvas.height = height * ratio;
+   w = window.innerWidth; h = window.innerHeight;
+   cvs.width = w * ratio; cvs.height = h * ratio;
    ctx.scale(ratio, ratio);
-   coreSize = width * 0.14;
+   cSize = w * 0.15;
 }
 window.addEventListener("resize", resize); resize();
 
-// Simulation de collisions entrantes
-function spawnCollision(label) {
-   collisions.push({
-       label: label,
-       ang: Math.random() * 6.2,
-       d: 500,
-       targetD: 220,
-       type: Math.random() > 0.5 ? 'user' : 'pro',
-       o: 0
-   });
-   alertBox.style.opacity = 1;
-   setTimeout(() => alertBox.style.opacity = 0, 3000);
-}
-
-mainIn.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && mainIn.value) {
-       myInterests.push({ label: mainIn.value, ang: Math.random()*6, d: 400, targetD: 150, o: 0 });
-       const savedVal = mainIn.value;
-       mainIn.value = "";
-       // A-TOm simule une recherche de collision après 2 secondes
-       setTimeout(() => spawnCollision(savedVal), 2000);
+flowIn.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && flowIn.value) {
+       const v = flowIn.value;
+       myAtoms.push({ l: v, a: Math.random()*6, d: 500, td: 160, c: "#0FF" });
+       flowIn.value = "";
+       say(`ANALYSE FLUX : ${v}`);
+       setTimeout(() => {
+           collisions.push({ l: v, a: Math.random()*6, d: 600, td: 220, c: "#FFF" });
+           say("COLLISION DÉTECTÉE");
+       }, 1500);
    }
 });
 
-function drawAtom(x, y, label, radius, color, alpha, isCore) {
-   ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
-
-   // Orbite de l'atome
-   ctx.strokeStyle = color; ctx.lineWidth = 1;
-   ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.stroke();
-
-   // Label
-   ctx.fillStyle = "#fff";
-   ctx.font = `100 ${isCore ? '20px' : '9px'} Helvetica`;
-   ctx.textAlign = "center";
-   ctx.fillText(label.toUpperCase(), 0, isCore ? 7 : 3);
-   ctx.restore();
-}
-
 function draw() {
-   ctx.clearRect(0, 0, width, height);
-   ctx.save(); ctx.translate(width/2, height/2);
+   ctx.clearRect(0, 0, w, h);
+   ctx.save(); ctx.translate(w/2, h/2);
    const time = Date.now() * 0.002;
 
-   // NOYAU CENTRAL
-   const pulse = (Math.sin(time*2)+1)/2;
-   drawAtom(0, Math.sin(time)*5, "m", coreSize/2 + (pulse*2), "#0FF", 1, true);
+   // Noyau m
+   const p = (Math.sin(time*2)+1)/2;
+   ctx.shadowBlur = 20 * p; ctx.shadowColor = "#0FF";
+   ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
+   ctx.beginPath(); ctx.arc(0, 0, cSize/2, 0, Math.PI*2); ctx.stroke();
+   ctx.shadowBlur = 0; ctx.fillStyle = "#fff"; ctx.font = "100 20px Helvetica"; ctx.textAlign="center";
+   ctx.fillText("m", 0, 7);
 
-   // MES INTÉRÊTS (Cyan)
-   myInterests.forEach(a => {
-       a.ang += 0.006; if(a.d > a.targetD) a.d -= 3;
-       drawAtom(Math.cos(a.ang)*a.d, Math.sin(a.ang)*a.d, a.label, 15, "#0FF", 0.8, false);
+   // Orbites
+   [myAtoms, collisions].forEach((group, idx) => {
+       group.forEach(at => {
+           at.a += (idx === 0 ? 0.006 : -0.003);
+           if(at.d > at.td) at.d -= 4;
+           const x = Math.cos(at.a)*at.d; const y = Math.sin(at.a)*at.d;
+           ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 0.8 : 0.3);
+           ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI*2); ctx.stroke();
+           ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
+           ctx.fillText(at.l.toUpperCase(), x, y + 22);
+           if(idx === 1) { // Ligne de résonance
+               ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(x,y); 
+               ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.stroke();
+           }
+       });
    });
 
-   // COLLISIONS (Blanches/Grisées)
-   collisions.forEach((c, i) => {
-       c.ang -= 0.003; // Sens inverse pour différencier
-       if(c.d > c.targetD) c.d -= 2;
-       const color = c.type === 'pro' ? '#0FF' : '#fff';
-       drawAtom(Math.cos(c.ang)*c.d, Math.sin(c.ang)*c.d, c.label, 12, color, 0.4, false);
-
-       // Ligne de connexion si proche
-       if(c.d < 250) {
-           ctx.strokeStyle = `rgba(255,255,255,${0.1})`;
-           ctx.beginPath(); ctx.moveTo(0,0); 
-           ctx.lineTo(Math.cos(c.ang)*c.d, Math.sin(c.ang)*c.d); ctx.stroke();
-       }
-   });
-
+   ctx.globalAlpha = 0.2; ctx.font = "8px Helvetica"; ctx.fillText(loc, 0, h/2 - 100);
    ctx.restore(); requestAnimationFrame(draw);
 }
 draw();
