@@ -4,47 +4,51 @@
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
    <meta name="apple-mobile-web-app-capable" content="yes">
+   <title>the miny</title>
    <style>
        :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
-       body, html { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100%; width: 100%; position: fixed; font-family: -apple-system, sans-serif; }
-
-       /* Conteneur UI pour verrouiller l'espace */
-       #the-miny-app { 
-           position: absolute; inset: 0; display: flex; flex-direction: column; 
-           padding: calc(var(--sat) + 10px) 20px calc(var(--sab) + 10px) 20px;
-           box-sizing: border-box; z-index: 10; pointer-events: none;
+       body, html { 
+           margin: 0; padding: 0; background: #000; overflow: hidden; 
+           height: 100dvh; width: 100vw; position: fixed;
+           font-family: -apple-system, sans-serif;
        }
+       /* Le Canvas est le fond de scène total */
+       canvas { position: absolute; inset: 0; z-index: 1; touch-action: none; }
 
-       #header { flex: 0 0 40px; text-align: center; color: #0FF; font-size: 9px; letter-spacing: 5px; text-transform: uppercase; }
-       #core-space { flex: 1; width: 100%; position: relative; } /* C'est ICI que l'atome est ancré */
-
-       #footer { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-       #input-pill { 
-           width: 100%; max-width: 400px; background: rgba(255,255,255,0.08); 
+       /* L'UI flotte par-dessus sans influencer le layout */
+       #ui-layer {
+           position: absolute; inset: 0; z-index: 10;
+           display: flex; flex-direction: column;
+           padding: calc(var(--sat) + 15px) 20px calc(var(--sab) + 15px) 20px;
+           pointer-events: none; box-sizing: border-box;
+       }
+       #header { flex: 0; text-align: center; color: #0FF; font-size: 9px; letter-spacing: 5px; opacity: 0.8; }
+       #spacer { flex: 1; }
+       #footer { flex: 0; display: flex; flex-direction: column; align-items: center; }
+       #pill { 
+           width: 100%; max-width: 380px; background: rgba(255,255,255,0.08); 
            border-radius: 50px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
            pointer-events: auto;
        }
        input { 
            background: transparent; border: none; color: #fff; width: 100%; 
-           text-align: center; font-size: 16px; outline: none; padding: 16px 0; 
+           text-align: center; font-size: 16px; outline: none; padding: 18px 0; 
            letter-spacing: 2px; text-transform: uppercase; font-weight: 200;
        }
-       #coords { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 10px; letter-spacing: 2px; }
-
-       canvas { position: fixed; top: 0; left: 0; z-index: 1; }
-       #boot { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; letter-spacing: 4px; cursor: pointer; }
+       #tag { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 10px; letter-spacing: 2px; }
+       #boot { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #555; font-size: 10px; letter-spacing: 4px; }
    </style>
 </head>
 <body>
 
-<div id="boot" onclick="this.style.display='none'">INITIALISER A-TOM</div>
+<div id="boot" onclick="this.style.display='none'">STABILISATION V17.5</div>
 
-<div id="the-miny-app">
-   <div id="header" id="status">A-TOM : VEILLE</div>
-   <div id="core-space"></div>
+<div id="ui-layer">
+   <div id="header">A-TOM : ACTIF</div>
+   <div id="spacer"></div>
    <div id="footer">
-       <div id="input-pill"><input type="text" id="inp" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
-       <div id="coords">NANTES : SCAN...</div>
+       <div id="pill"><input type="text" id="flow" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
+       <div id="tag">NANTES : 47.349 / -1.541</div>
    </div>
 </div>
 
@@ -52,63 +56,71 @@
 
 <script>
 const stage = document.getElementById('stage'), ctx = stage.getContext('2d');
-const coreSpace = document.getElementById('core-space'), inp = document.getElementById('inp');
+const flow = document.getElementById('flow');
 let w, h, ratio, atoms = [];
 
-function resize() {
+function sync() {
    ratio = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
    stage.width = w * ratio; stage.height = h * ratio;
    ctx.scale(ratio, ratio);
 }
-window.addEventListener('resize', resize); resize();
+window.addEventListener('resize', sync); sync();
 
-// Système de capture de flux
-inp.addEventListener('keydown', (e) => {
-   if(e.key === 'Enter' && inp.value) {
-       atoms.push({ l: inp.value, a: Math.random()*7, d: 200, targetD: 80 });
-       inp.value = '';
+flow.addEventListener('keydown', (e) => {
+   if(e.key === 'Enter' && flow.value) {
+       atoms.push({ 
+           label: flow.value, 
+           angle: Math.random() * 6.28, 
+           dist: 180, 
+           targetDist: 85, // Orbite resserrée selon charte
+           color: '#0FF' 
+       });
+       flow.value = '';
    }
 });
 
 function draw() {
    ctx.clearRect(0, 0, w, h);
 
-   // ANCRAGE ABSOLU : On récupère le centre de l'espace libre en temps réel
-   const rect = coreSpace.getBoundingClientRect();
-   const cx = rect.left + rect.width / 2;
-   const cy = rect.top + rect.height / 2;
+   // CALCUL DU CENTRE GÉOMÉTRIQUE PUR (Indépendant du DOM)
+   const cx = w / 2;
+   const cy = h / 2;
 
    ctx.save();
    ctx.translate(cx, cy);
 
-   // NOYAU CENTRAL (m)
+   // NOYAU CENTRAL (Design épuré ligne droite)
    ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
-   ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.stroke();
-   ctx.fillStyle = '#FFF'; ctx.font = '200 18px Helvetica'; ctx.textAlign = 'center';
+   ctx.lineWidth = 1;
+   ctx.beginPath(); 
+   ctx.arc(0, 0, 26, 0, Math.PI * 2); 
+   ctx.stroke();
+
+   ctx.fillStyle = '#FFF';
+   ctx.font = '200 20px Helvetica';
+   ctx.textAlign = 'center';
    ctx.fillText('m', 0, 7);
 
-   // ÉLECTRONS D'INTÉRÊTS
-   atoms.forEach(at => {
-       at.a += 0.01;
-       at.d += (at.targetD - at.d) * 0.1;
-       const x = Math.cos(at.a) * at.d, y = Math.sin(at.a) * at.d;
+   // ÉLECTRONS (3 électrons max selon charte)
+   atoms.slice(-3).forEach(at => {
+       at.angle += 0.008;
+       at.dist += (at.targetDist - at.dist) * 0.1;
+       const x = Math.cos(at.angle) * at.dist;
+       const y = Math.sin(at.angle) * at.dist;
 
-       ctx.strokeStyle = '#0FF';
+       ctx.strokeStyle = at.color;
        ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2); ctx.stroke();
-       ctx.fillStyle = '#FFF'; ctx.font = '8px Helvetica';
-       ctx.fillText(at.l.toUpperCase(), x, y + 25);
+
+       ctx.fillStyle = '#FFF';
+       ctx.font = '300 9px Helvetica';
+       ctx.fillText(at.label.toUpperCase(), x, y + 25);
    });
 
    ctx.restore();
    requestAnimationFrame(draw);
 }
 draw();
-
-// Géo-fix Nantes
-navigator.geolocation.getCurrentPosition(p => {
-   document.getElementById('coords').innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
-});
 </script>
 </body>
 </html>
