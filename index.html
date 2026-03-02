@@ -4,33 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>the miny</title>
+<title>the miny - v22.22 Collision</title>
 <style>
   body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, sans-serif; color: #fff; touch-action: none; }
   canvas { display: block; }
-
-  #ui-layer { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 60px 30px; }
-  #atom-msg { font-size: 14px; font-weight: 200; letter-spacing: 2px; color: #0FF; text-align: center; opacity: 0; transition: 1s; height: 40px; }
-
-  #input-container { pointer-events: auto; width: 100%; border-bottom: 1px solid #222; opacity: 0.5; transition: 0.5s; }
-  #input-container:focus-within { opacity: 1; border-color: #0FF; }
-  input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 18px; outline: none; padding: 15px; letter-spacing: 5px; font-weight: 100; text-transform: uppercase; }
-
-  #init-gate { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  #ui-layer { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 50px 25px; }
+  #collision-alert { font-size: 11px; letter-spacing: 3px; color: #fff; text-align: center; opacity: 0; transition: 0.5s; background: rgba(0,255,255,0.1); padding: 10px; border-radius: 20px; align-self: center; }
+  #input-box { pointer-events: auto; width: 100%; text-align: center; }
+  input { background: transparent; border: none; border-bottom: 1px solid #222; color: #fff; width: 80%; text-align: center; font-size: 16px; outline: none; padding: 10px; letter-spacing: 4px; font-weight: 100; text-transform: uppercase; }
 </style>
 </head>
 <body>
 
-<div id="init-gate" onclick="startApp()">
-   <div style="text-align:center; letter-spacing:8px; font-size:10px; color:#555;">[ ÉVEILLER LE FLUX ]</div>
-</div>
-
 <div id="ui-layer">
-   <div id="atom-msg"></div>
-   <div id="input-container">
-       <input type="text" id="main-input" placeholder="..." autocomplete="off">
-   </div>
+   <div id="collision-alert">COLLISION DÉTECTÉE : NANTES CENTRE</div>
+   <div id="input-box"><input type="text" id="main-in" placeholder="AJOUTER UN FLUX..." autocomplete="off"></div>
 </div>
 
 <canvas id="minyCanvas"></canvas>
@@ -38,85 +26,91 @@
 <script>
 const canvas = document.getElementById("minyCanvas");
 const ctx = canvas.getContext("2d");
-const atomMsg = document.getElementById("atom-msg");
-const mainInput = document.getElementById("main-input");
+const alertBox = document.getElementById("collision-alert");
+const mainIn = document.getElementById("main-in");
 
 let width, height, ratio, coreSize;
-let interests = []; 
-let peopleAround = []; // Simulation de collisions
-let locationLabel = "NANTES : SCAN EN COURS...";
-
-function speak(text) {
-   atomMsg.style.opacity = 0;
-   setTimeout(() => {
-       atomMsg.innerText = text;
-       atomMsg.style.opacity = 1;
-   }, 500);
-}
-
-function startApp() {
-   document.getElementById("init-gate").style.display = "none";
-   speak("BIENVENU DIRECTEUR. A-TOm EST EN LIGNE.");
-
-   navigator.geolocation.getCurrentPosition((pos) => {
-       locationLabel = `NANTES : ${pos.coords.latitude.toFixed(3)} / ${pos.coords.longitude.toFixed(3)}`;
-       // Simulation de 3 personnes connectées à Nantes
-       for(let i=0; i<3; i++) {
-           peopleAround.push({ ang: Math.random()*6, d: 250 + Math.random()*50, size: 3 });
-       }
-   });
-}
+let myInterests = []; 
+let collisions = []; // Atomes d'autres utilisateurs/entreprises
+let isAttracting = false;
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
    width = window.innerWidth; height = window.innerHeight;
    canvas.width = width * ratio; canvas.height = height * ratio;
    ctx.scale(ratio, ratio);
-   coreSize = width * 0.15;
+   coreSize = width * 0.14;
 }
 window.addEventListener("resize", resize); resize();
 
-mainInput.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && mainInput.value) {
-       const val = mainInput.value;
-       interests.push({ label: val, ang: Math.random()*6, d: 500, targetD: 180, o: 0 });
-       mainInput.value = "";
-       speak(`FLUX "${val}" ANALYSÉ. RÉSONANCE À 88%`);
+// Simulation de collisions entrantes
+function spawnCollision(label) {
+   collisions.push({
+       label: label,
+       ang: Math.random() * 6.2,
+       d: 500,
+       targetD: 220,
+       type: Math.random() > 0.5 ? 'user' : 'pro',
+       o: 0
+   });
+   alertBox.style.opacity = 1;
+   setTimeout(() => alertBox.style.opacity = 0, 3000);
+}
+
+mainIn.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && mainIn.value) {
+       myInterests.push({ label: mainIn.value, ang: Math.random()*6, d: 400, targetD: 150, o: 0 });
+       const savedVal = mainIn.value;
+       mainIn.value = "";
+       // A-TOm simule une recherche de collision après 2 secondes
+       setTimeout(() => spawnCollision(savedVal), 2000);
    }
 });
+
+function drawAtom(x, y, label, radius, color, alpha, isCore) {
+   ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
+
+   // Orbite de l'atome
+   ctx.strokeStyle = color; ctx.lineWidth = 1;
+   ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2); ctx.stroke();
+
+   // Label
+   ctx.fillStyle = "#fff";
+   ctx.font = `100 ${isCore ? '20px' : '9px'} Helvetica`;
+   ctx.textAlign = "center";
+   ctx.fillText(label.toUpperCase(), 0, isCore ? 7 : 3);
+   ctx.restore();
+}
 
 function draw() {
    ctx.clearRect(0, 0, width, height);
    ctx.save(); ctx.translate(width/2, height/2);
    const time = Date.now() * 0.002;
 
-   // Dessin du noyau "m"
+   // NOYAU CENTRAL
    const pulse = (Math.sin(time*2)+1)/2;
-   ctx.shadowBlur = 15 * pulse; ctx.shadowColor = "#0FF";
-   ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5;
-   ctx.beginPath(); ctx.arc(0, 0, coreSize/2, 0, Math.PI*2); ctx.stroke();
-   ctx.shadowBlur = 0;
-   ctx.fillStyle = "#fff"; ctx.font = "100 24px Helvetica"; ctx.textAlign="center";
-   ctx.fillText("m", 0, 8);
+   drawAtom(0, Math.sin(time)*5, "m", coreSize/2 + (pulse*2), "#0FF", 1, true);
 
-   // Dessin des intérêts (Électrons)
-   interests.forEach(a => {
-       a.ang += 0.005; if(a.d > a.targetD) a.d -= 4;
-       const x = Math.cos(a.ang)*a.d; const y = Math.sin(a.ang)*a.d;
-       ctx.strokeStyle = "rgba(255,255,255,0.5)";
-       ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI*2); ctx.stroke();
-       ctx.font = "10px Helvetica"; ctx.fillText(a.label.toUpperCase(), x, y+25);
+   // MES INTÉRÊTS (Cyan)
+   myInterests.forEach(a => {
+       a.ang += 0.006; if(a.d > a.targetD) a.d -= 3;
+       drawAtom(Math.cos(a.ang)*a.d, Math.sin(a.ang)*a.d, a.label, 15, "#0FF", 0.8, false);
    });
 
-   // Dessin des "Gens" autour (Collisions passives)
-   peopleAround.forEach(p => {
-       p.ang += 0.002;
-       ctx.fillStyle = "rgba(0, 255, 255, 0.4)";
-       ctx.beginPath(); ctx.arc(Math.cos(p.ang)*p.d, Math.sin(p.ang)*p.d, p.size, 0, Math.PI*2); ctx.fill();
-   });
+   // COLLISIONS (Blanches/Grisées)
+   collisions.forEach((c, i) => {
+       c.ang -= 0.003; // Sens inverse pour différencier
+       if(c.d > c.targetD) c.d -= 2;
+       const color = c.type === 'pro' ? '#0FF' : '#fff';
+       drawAtom(Math.cos(c.ang)*c.d, Math.sin(c.ang)*c.d, c.label, 12, color, 0.4, false);
 
-   // Signature GPS
-   ctx.globalAlpha = 0.3; ctx.font = "9px Helvetica"; ctx.fillText(locationLabel, 0, height/2 - 100);
+       // Ligne de connexion si proche
+       if(c.d < 250) {
+           ctx.strokeStyle = `rgba(255,255,255,${0.1})`;
+           ctx.beginPath(); ctx.moveTo(0,0); 
+           ctx.lineTo(Math.cos(c.ang)*c.d, Math.sin(c.ang)*c.d); ctx.stroke();
+       }
+   });
 
    ctx.restore(); requestAnimationFrame(draw);
 }
