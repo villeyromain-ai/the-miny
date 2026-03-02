@@ -3,27 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>the miny - v22.20 Nano</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>the miny</title>
 <style>
-  body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica; color: #fff; touch-action: none; }
-  canvas { display: block; width: 100vw; height: 100vh; }
+  body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, sans-serif; color: #fff; touch-action: none; }
+  canvas { display: block; }
 
-  #overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); transition: 0.5s; }
-  #status { font-size: 10px; letter-spacing: 5px; color: #0FF; text-align: center; font-weight: 200; }
+  #ui-layer { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 60px 30px; }
+  #atom-msg { font-size: 14px; font-weight: 200; letter-spacing: 2px; color: #0FF; text-align: center; opacity: 0; transition: 1s; height: 40px; }
 
-  #input-area { position: fixed; bottom: 10%; left: 50%; transform: translateX(-50%); z-index: 50; width: 80%; opacity: 0; transition: 0.8s; pointer-events: none; }
-  #input-area.visible { opacity: 1; pointer-events: auto; }
-  input { background: transparent; border: none; border-bottom: 1px solid #333; color: #fff; width: 100%; text-align: center; font-size: 1.2rem; outline: none; font-weight: 100; letter-spacing: 4px; padding: 10px; }
+  #input-container { pointer-events: auto; width: 100%; border-bottom: 1px solid #222; opacity: 0.5; transition: 0.5s; }
+  #input-container:focus-within { opacity: 1; border-color: #0FF; }
+  input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 18px; outline: none; padding: 15px; letter-spacing: 5px; font-weight: 100; text-transform: uppercase; }
+
+  #init-gate { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 </style>
 </head>
 <body>
 
-<div id="overlay" onclick="awake()">
-   <div id="status">TOUCHER POUR ÉVEILLER<br>A-TOm</div>
+<div id="init-gate" onclick="startApp()">
+   <div style="text-align:center; letter-spacing:8px; font-size:10px; color:#555;">[ ÉVEILLER LE FLUX ]</div>
 </div>
 
-<div id="input-area">
-   <input type="text" id="atom-in" placeholder="FLUX D'INTÉRÊT..." autocomplete="off">
+<div id="ui-layer">
+   <div id="atom-msg"></div>
+   <div id="input-container">
+       <input type="text" id="main-input" placeholder="..." autocomplete="off">
+   </div>
 </div>
 
 <canvas id="minyCanvas"></canvas>
@@ -31,24 +38,33 @@
 <script>
 const canvas = document.getElementById("minyCanvas");
 const ctx = canvas.getContext("2d");
-const overlay = document.getElementById("overlay");
-const inputArea = document.getElementById("input-area");
-const atomIn = document.getElementById("atom-in");
+const atomMsg = document.getElementById("atom-msg");
+const mainInput = document.getElementById("main-input");
 
-let width, height, ratio;
-let coreSize, orbitDist;
-let atoms = [];
-let locationStatus = "EN ATTENTE";
+let width, height, ratio, coreSize;
+let interests = []; 
+let peopleAround = []; // Simulation de collisions
+let locationLabel = "NANTES : SCAN EN COURS...";
 
-function awake() {
-   overlay.style.opacity = "0";
-   setTimeout(() => overlay.style.display = "none", 500);
-   inputArea.classList.add("visible");
+function speak(text) {
+   atomMsg.style.opacity = 0;
+   setTimeout(() => {
+       atomMsg.innerText = text;
+       atomMsg.style.opacity = 1;
+   }, 500);
+}
 
-   // Force GPS sur interaction iPhone
+function startApp() {
+   document.getElementById("init-gate").style.display = "none";
+   speak("BIENVENU DIRECTEUR. A-TOm EST EN LIGNE.");
+
    navigator.geolocation.getCurrentPosition((pos) => {
-       locationStatus = `${pos.coords.latitude.toFixed(2)} / ${pos.coords.longitude.toFixed(2)}`;
-   }, () => { locationStatus = "GPS REJETÉ"; });
+       locationLabel = `NANTES : ${pos.coords.latitude.toFixed(3)} / ${pos.coords.longitude.toFixed(3)}`;
+       // Simulation de 3 personnes connectées à Nantes
+       for(let i=0; i<3; i++) {
+           peopleAround.push({ ang: Math.random()*6, d: 250 + Math.random()*50, size: 3 });
+       }
+   });
 }
 
 function resize() {
@@ -56,66 +72,51 @@ function resize() {
    width = window.innerWidth; height = window.innerHeight;
    canvas.width = width * ratio; canvas.height = height * ratio;
    ctx.scale(ratio, ratio);
-
-   // Adaptation dynamique à la taille de l'iPhone
-   coreSize = width * 0.12; 
-   orbitDist = width * 0.35;
+   coreSize = width * 0.15;
 }
 window.addEventListener("resize", resize); resize();
 
-atomIn.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && atomIn.value) {
-       atoms.push({ 
-           label: atomIn.value, 
-           ang: Math.random() * 6.28, 
-           d: 400, 
-           targetD: orbitDist + (Math.random() * 30),
-           o: 0 
-       });
-       atomIn.value = "";
+mainInput.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && mainInput.value) {
+       const val = mainInput.value;
+       interests.push({ label: val, ang: Math.random()*6, d: 500, targetD: 180, o: 0 });
+       mainInput.value = "";
+       speak(`FLUX "${val}" ANALYSÉ. RÉSONANCE À 88%`);
    }
 });
-
-function drawAtom(x, y, label, radius, isCore, alpha = 1) {
-   ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
-
-   // Glow subtil
-   const p = (Math.sin(Date.now()*0.004)+1)/2;
-   const g = ctx.createRadialGradient(0,0,0,0,0,radius*3);
-   g.addColorStop(0, "rgba(0, 255, 255, 0.1)"); g.addColorStop(1, "rgba(0,0,0,0)");
-   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0,0,radius*4,0,Math.PI*2); ctx.fill();
-
-   ctx.shadowColor = "rgba(0,255,255,0.4)"; ctx.shadowBlur = 8;
-   ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.fillStyle = "#000";
-   ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); ctx.stroke();
-
-   ctx.fillStyle = "#fff";
-   ctx.font = `100 ${isCore ? radius*0.5 : radius*0.45}px Helvetica Neue`;
-   ctx.textAlign = "center";
-   ctx.fillText(label.toUpperCase(), 0, radius*0.18);
-   ctx.restore();
-}
 
 function draw() {
    ctx.clearRect(0, 0, width, height);
    ctx.save(); ctx.translate(width/2, height/2);
    const time = Date.now() * 0.002;
-   const floatY = Math.sin(time) * 4;
 
-   // Noyau central redimensionné
-   drawAtom(0, floatY, "M", coreSize, true, 1);
+   // Dessin du noyau "m"
+   const pulse = (Math.sin(time*2)+1)/2;
+   ctx.shadowBlur = 15 * pulse; ctx.shadowColor = "#0FF";
+   ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5;
+   ctx.beginPath(); ctx.arc(0, 0, coreSize/2, 0, Math.PI*2); ctx.stroke();
+   ctx.shadowBlur = 0;
+   ctx.fillStyle = "#fff"; ctx.font = "100 24px Helvetica"; ctx.textAlign="center";
+   ctx.fillText("m", 0, 8);
 
-   // Électrons dynamiques (tes intérêts)
-   atoms.forEach((a, i) => {
-       a.ang += 0.005;
-       if(a.d > a.targetD) a.d -= 3;
-       if(a.o < 1) a.a += 0.02;
-       drawAtom(Math.cos(a.ang)*a.d, Math.sin(a.ang)*a.d + floatY, a.label, coreSize*0.5, false, 0.7);
+   // Dessin des intérêts (Électrons)
+   interests.forEach(a => {
+       a.ang += 0.005; if(a.d > a.targetD) a.d -= 4;
+       const x = Math.cos(a.ang)*a.d; const y = Math.sin(a.ang)*a.d;
+       ctx.strokeStyle = "rgba(255,255,255,0.5)";
+       ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI*2); ctx.stroke();
+       ctx.font = "10px Helvetica"; ctx.fillText(a.label.toUpperCase(), x, y+25);
    });
 
-   // Stats GPS discrètes
-   ctx.globalAlpha = 0.3; ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica"; ctx.textAlign = "center";
-   ctx.fillText(`NANTES : ${locationStatus}`, 0, height/2 - 30);
+   // Dessin des "Gens" autour (Collisions passives)
+   peopleAround.forEach(p => {
+       p.ang += 0.002;
+       ctx.fillStyle = "rgba(0, 255, 255, 0.4)";
+       ctx.beginPath(); ctx.arc(Math.cos(p.ang)*p.d, Math.sin(p.ang)*p.d, p.size, 0, Math.PI*2); ctx.fill();
+   });
+
+   // Signature GPS
+   ctx.globalAlpha = 0.3; ctx.font = "9px Helvetica"; ctx.fillText(locationLabel, 0, height/2 - 100);
 
    ctx.restore(); requestAnimationFrame(draw);
 }
