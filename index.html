@@ -14,72 +14,68 @@
       font-family: -apple-system, sans-serif; color: #fff;
   }
 
-  /* Le canevas reste en arrière-plan total */
   canvas { position: absolute; inset: 0; z-index: 1; touch-action: none; }
 
-  /* L'interface s'adapte strictement à la zone visible */
-  #app-frame {
+  /* Interface avec marges de sécurité accrues */
+  #ui-container {
       position: relative; z-index: 10;
-      height: 100vh; width: 100vw;
+      height: 100dvh; width: 100vw; /* Utilisation de dvh pour le viewport dynamique */
       display: flex; flex-direction: column;
-      padding: calc(var(--sat) + 20px) 25px calc(var(--sab) + 20px) 25px;
+      padding: calc(var(--sat) + 15px) 25px calc(var(--sab) + 15px) 25px;
       box-sizing: border-box;
       pointer-events: none;
   }
 
-  #header { flex: 0 0 50px; text-align: center; }
-  #voice { font-size: 10px; letter-spacing: 5px; color: #0FF; text-transform: uppercase; font-weight: 200; }
+  #voice-header { flex: 0 0 40px; text-align: center; }
+  #voice-text { font-size: 9px; letter-spacing: 5px; color: #0FF; text-transform: uppercase; font-weight: 200; }
 
-  /* Zone centrale vide pour laisser le noyau respirer */
-  #spacer { flex: 1; }
+  #main-space { flex: 1; } /* Espace pour le noyau */
 
-  #footer { flex: 0 0 80px; pointer-events: auto; }
-  #input-pill { 
+  #input-footer { flex: 0 0 100px; pointer-events: auto; display: flex; align-items: center; }
+  #pill { 
       background: rgba(255,255,255,0.08); 
-      border-radius: 50px; backdrop-filter: blur(15px); 
-      border: 1px solid rgba(255,255,255,0.1);
-      overflow: hidden;
+      border-radius: 50px; backdrop-filter: blur(20px); 
+      border: 1px solid rgba(255,255,255,0.1); width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
   input { 
       background: transparent; border: none; color: #fff; width: 100%; 
-      text-align: center; font-size: 15px; outline: none; padding: 18px 0; 
+      text-align: center; font-size: 14px; outline: none; padding: 16px 0; 
       letter-spacing: 3px; font-weight: 200; text-transform: uppercase; 
   }
 
-  #boot-screen { 
+  #overlay { 
       position: fixed; inset: 0; z-index: 100; background: #000; 
       display: flex; align-items: center; justify-content: center; cursor: pointer;
   }
-  .pulse-btn { border: 1px solid #333; padding: 15px 30px; border-radius: 40px; font-size: 9px; letter-spacing: 4px; color: #666; }
+  .start-trigger { border: 1px solid #333; padding: 12px 25px; border-radius: 40px; font-size: 8px; letter-spacing: 4px; color: #666; }
 </style>
 </head>
 <body>
 
-<div id="boot-screen" onclick="start()">
-   <div class="pulse-btn">RÉALIGNER LE FLUX</div>
+<div id="overlay" onclick="launch()">
+   <div class="start-trigger">SYNCHRONISER L'ÉCRAN</div>
 </div>
 
-<div id="app-frame">
-   <div id="header"><div id="voice">ALIGNEMENT...</div></div>
-   <div id="spacer"></div>
-   <div id="footer">
-       <div id="input-pill"><input type="text" id="flow-in" placeholder="AJOUTER UN FLUX" autocomplete="off"></div>
+<div id="ui-container">
+   <div id="voice-header"><div id="voice-text">...</div></div>
+   <div id="main-space"></div>
+   <div id="input-footer">
+       <div id="pill"><input type="text" id="flow-in" placeholder="AJOUTER UN FLUX" autocomplete="off"></div>
    </div>
 </div>
 
-<canvas id="stage"></canvas>
+<canvas id="view"></canvas>
 
 <script>
-const stage = document.getElementById("stage"), ctx = stage.getContext("2d");
-const voice = document.getElementById("voice"), flowIn = document.getElementById("flow-in");
+const view = document.getElementById("view"), ctx = view.getContext("2d");
+const voice = document.getElementById("voice-text"), flowIn = document.getElementById("flow-in");
 
 let w, h, ratio, cSize, atoms = [], collisions = [], loc = "NANTES : SCAN...";
 
-function say(t) { voice.innerText = t; }
-
-function start() {
-   document.getElementById("boot-screen").style.display = "none";
-   say("A-TOm : PRÊT");
+function launch() {
+   document.getElementById("overlay").style.display = "none";
+   voice.innerText = "A-TOm : SYSTÈME ALIGNÉ";
    navigator.geolocation.getCurrentPosition(p => {
        loc = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
    });
@@ -87,57 +83,58 @@ function start() {
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
-   w = window.innerWidth; h = window.innerHeight;
-   stage.width = w * ratio; stage.height = h * ratio;
+   w = window.innerWidth;
+   h = window.innerHeight;
+   view.width = w * ratio; view.height = h * ratio;
    ctx.scale(ratio, ratio);
-   cSize = Math.min(w, h) * 0.16;
+   cSize = Math.min(w, h) * 0.14;
 }
 window.addEventListener("resize", resize); resize();
 
 flowIn.addEventListener("keydown", (e) => {
    if(e.key === "Enter" && flowIn.value) {
-       atoms.push({ l: flowIn.value, a: Math.random()*6, d: 350, td: 110, c: "#0FF" });
-       say(`FLUX ANALYSÉ`);
+       atoms.push({ l: flowIn.value, a: Math.random()*6, d: 300, td: 100, c: "#0FF" });
+       voice.innerText = "FLUX CAPTÉ";
        flowIn.value = "";
        setTimeout(() => {
-           collisions.push({ l: "COLLISION", a: Math.random()*6, d: 450, td: 180, c: "#FFF", m: "RÉSONANCE ACTIVE" });
-           say("COLLISION DÉTECTÉE");
-       }, 1500);
+           collisions.push({ l: "PROXIMITÉ", a: Math.random()*6, d: 400, td: 180, c: "#FFF", msg: "RÉSONANCE" });
+           voice.innerText = "COLLISION DÉTECTÉE";
+       }, 1200);
    }
 });
 
 function draw() {
    ctx.clearRect(0, 0, w, h);
-   // On dessine le centre un peu plus haut (0.45 au lieu de 0.5) pour l'équilibre visuel iPhone
-   ctx.save(); ctx.translate(w/2, h * 0.45);
+   // On force le centre mathématique de l'interface visuelle
+   ctx.save(); ctx.translate(w/2, h * 0.42); // Remonté à 42% pour compenser le bouton en bas
    const time = Date.now() * 0.002;
 
    // NOYAU
-   ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1;
+   ctx.strokeStyle = "rgba(0,255,255,0.4)"; ctx.lineWidth = 1;
    ctx.beginPath(); ctx.arc(0, 0, cSize/2, 0, Math.PI*2); ctx.stroke();
    ctx.fillStyle = "#fff"; ctx.font = "100 18px Helvetica"; ctx.textAlign="center";
    ctx.fillText("m", 0, 7);
 
-   // SYSTÈME ORBITAL
-   [atoms, collisions].forEach((g, idx) => {
-       g.forEach(at => {
+   // ORBITES
+   [atoms, collisions].forEach((group, idx) => {
+       group.forEach(at => {
            at.a += (idx === 0 ? 0.005 : -0.002);
-           at.d += (at.td - at.d) * 0.04;
+           at.d += (at.td - at.d) * 0.06;
            const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
            ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.4);
-           ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2); ctx.stroke();
-           ctx.fillStyle = "#fff"; ctx.font = "9px Helvetica";
-           ctx.fillText(at.l.toUpperCase(), x, y + 26);
-           if(idx === 1 && at.d < 220) {
-               ctx.fillStyle = "#0FF"; ctx.fillText(at.m, x, y - 22);
+           ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI*2); ctx.stroke();
+           ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
+           ctx.fillText(at.l.toUpperCase(), x, y + 25);
+           if(idx === 1 && at.d < 200) {
+               ctx.fillStyle = "#0FF"; ctx.fillText(at.msg, x, y - 20);
            }
        });
    });
    ctx.restore();
 
-   // SIGNATURE POSITIONNÉE SELON LA HAUTEUR RÉELLE
+   // LOCALISATION
    ctx.save();
-   ctx.translate(w/2, h - 140);
+   ctx.translate(w/2, h * 0.82);
    ctx.globalAlpha = 0.2; ctx.fillStyle = "#fff"; ctx.font = "7px Helvetica"; ctx.textAlign="center";
    ctx.fillText(loc, 0, 0);
    ctx.restore();
