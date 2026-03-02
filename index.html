@@ -1,119 +1,230 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-   <title>the miny - v17.5.1</title>
-   <style>
-       body { 
-           margin: 0; background: #000; color: #fff; 
-           font-family: -apple-system, sans-serif; 
-           height: 100vh; display: flex; flex-direction: column; 
-           align-items: center; justify-content: flex-start; overflow: hidden; 
-           padding-top: 20vh;
-       }
-
-       /* LE SCEAU : Géométrie Cyan Glacé */
-       #sceau { 
-           width: 90px; height: 90px; position: relative; 
-           margin-bottom: 40px; cursor: pointer;
-           transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-       }
-
-       .noyau {
-           width: 8px; height: 8px; background: #fff; border-radius: 50%;
-           position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-           box-shadow: 0 0 10px rgba(224, 255, 255, 0.6);
-       }
-
-       .electron { 
-           width: 6px; height: 6px; background: #e0ffff; 
-           position: absolute; border-radius: 50%; 
-           box-shadow: 0 0 12px rgba(224, 255, 255, 0.9);
-       }
-
-       #e1 { top: 0; left: 50%; transform: translateX(-50%); }
-       #e2 { bottom: 0; left: 0; }
-       #e3 { bottom: 0; right: 0; }
-
-       #input-flux { 
-           background: transparent; border: none; 
-           border-bottom: 1px solid #222; color: #fff; 
-           text-align: center; font-size: 1.1rem; outline: none; 
-           width: 220px; letter-spacing: 5px; padding: 10px 0;
-           text-transform: uppercase; margin-bottom: 20px;
-       }
-
-       /* THE STREAM (LE FLUX) */
-       #stream {
-           width: 100%; max-width: 300px;
-           height: 30vh; overflow-y: auto;
-           mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-           -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-           padding: 10px;
-       }
-
-       .flux-item {
-           font-size: 0.6rem; letter-spacing: 2px; color: #444;
-           text-transform: uppercase; margin-bottom: 15px;
-           border-left: 1px solid #222; padding-left: 10px;
-           animation: fadeIn 0.8s ease forwards;
-       }
-
-       .flux-item b { color: #e0ffff; }
-
-       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-       #status { 
-           font-size: 0.55rem; letter-spacing: 2px; color: #333; 
-           text-align: center; margin-top: 10px; text-transform: uppercase;
-       }
-   </style>
+<meta charset="UTF-8">
+<title>the miny - v22.15 Crystal Logic</title>
+<style>
+  body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; cursor: none; user-select: none; touch-action: none; font-family: 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif; }
+  #instruction { position: absolute; bottom: 60px; color: rgba(255,255,255,0.4); font-weight: 200; font-size: 12px; letter-spacing: 4px; opacity: 0; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; width: 100%; pointer-events: none; text-transform: lowercase; }
+  canvas { filter: contrast(110%) brightness(110%); }
+</style>
 </head>
 <body>
+<div id="instruction"></div>
+<canvas id="minyCanvas"></canvas>
 
-   <div id="sceau" onclick="activerCollision()">
-       <div class="noyau"></div>
-       <div class="electron" id="e1"></div>
-       <div class="electron" id="e2"></div>
-       <div class="electron" id="e3"></div>
-   </div>
+<script>
+const canvas = document.getElementById("minyCanvas");
+const ctx = canvas.getContext("2d");
+const instruction = document.getElementById("instruction");
+let width, height, ratio;
 
-   <input type="text" id="input-flux" placeholder="INTERÊT" onkeydown="if(event.key==='Enter') activerCollision()">
+let state = "START_M", currentCore = "m";
+let progress = 0, pressTimer = 0, isPressing = false;
+let targetCore = "m", selectedAngle = 0;
+let showHalo = false, instructionTimeout;
+let yOffset = 0, isInitiated = false, hasMessaged = false;
+const knowledge = { "i": false, "y": false, "n": false, "atom": false };
 
-   <div id="stream"></div>
-   <div id="status">SYSTÈME PASSIF | NANTES</div>
+const menus = {
+  "m": { electrons: ["n", "y", "i"], angles: [-Math.PI/2, Math.PI/6, 5*Math.PI/6] },
+  "i": { electrons: ["e", "e", "e"], angles: [-Math.PI/2, Math.PI/6, 5*Math.PI/6] },
+  "y": { electrons: ["e", "e", "e"], angles: [-Math.PI/2, Math.PI/6, 5*Math.PI/6] }
+};
 
-   <script>
-       function activerCollision() {
-           const input = document.getElementById('input-flux');
-           const val = input.value;
-           if(!val) return;
+function resize() {
+  ratio = window.devicePixelRatio || 1;
+  width = window.innerWidth; height = window.innerHeight;
+  canvas.width = width * ratio; canvas.height = height * ratio;
+  canvas.style.width = width + "px"; canvas.style.height = height + "px";
+  ctx.scale(ratio, ratio);
+}
+window.addEventListener("resize", resize); resize();
 
-           const sceau = document.getElementById('sceau');
-           const stream = document.getElementById('stream');
+function updateInstruction(text, isAction = false, delay = 0) {
+  clearTimeout(instructionTimeout);
+  instructionTimeout = setTimeout(() => {
+      instruction.style.opacity = 0;
+      instruction.style.transform = "translateY(10px)";
+      setTimeout(() => {
+          instruction.innerHTML = text.replace("A-TOm", "<span style='color:#fff;font-weight:400'>A-TOm</span>");
+          instruction.style.opacity = 1;
+          instruction.style.transform = "translateY(0px)";
+          showHalo = isAction;
+      }, 500);
+  }, delay);
+}
 
-           sceau.style.transform = 'rotate(1080deg)';
+const onDown = (e) => {
+  isPressing = true; pressTimer = 0;
+  const t = e.touches ? e.touches[0] : e;
+  const mx = t.clientX - width/2, my = t.clientY - height/2;
+  const dist = Math.sqrt(mx*mx + my*my);
 
-           navigator.geolocation.getCurrentPosition(function(position) {
-               const lat = position.coords.latitude.toFixed(3);
-               const lon = position.coords.longitude.toFixed(3);
-               const intensite = Math.floor(Math.random() * 40) + 60;
-               const collisions = Math.floor(Math.random() * 8) + 1;
+  if (state === "ATOM_ALIGN" && yOffset > 0.8) {
+      if (Math.sqrt(mx**2 + (my - 80)**2) < 50) {
+          hasMessaged = true;
+          updateInstruction("ouverture de A-TOm...", false);
+          updateInstruction("toucher m pour revenir", true, 3000);
+          return;
+      }
+  }
 
-               setTimeout(() => {
-                   // Création de l'élément dans le flux
-                   const item = document.createElement('div');
-                   item.className = 'flux-item';
-                   item.innerHTML = `<b>${val}</b> • ${intensite}% RESONANCE<br>${collisions} COLLISIONS • ${lat}/${lon}`;
+  if (state === "IDLE") {
+      const config = menus[currentCore];
+      config.electrons.forEach((label, i) => {
+          const a = config.angles[i], ex = Math.cos(a)*180, ey = Math.sin(a)*180;
+          if (Math.sqrt((mx-ex)**2 + (my-ey)**2) < 60) {
+              targetCore = (label === "e") ? currentCore : label;
+              selectedAngle = a;
+              if (label !== "e") {
+                  state = (label === "n") ? "SPACE_JUMP" : "NAV_SPIN";
+                  progress = 0; isPressing = false;
+              }
+          }
+      });
+  }
+};
 
-                   stream.insertBefore(item, stream.firstChild);
+const onUp = (e) => {
+  const t = e.changedTouches ? e.changedTouches[0] : e;
+  const mx = t.clientX - width/2, my = t.clientY - height/2;
+  const distCenter = Math.sqrt(mx*mx + my*my);
 
-                   sceau.style.transform = 'rotate(0deg)';
-                   input.value = ''; // Reset input pour le prochain flux
-               }, 1000);
-           });
-       }
-   </script>
+  if (isPressing && pressTimer < 0.3) {
+      if (state === "IDLE" && currentCore !== "m" && distCenter < 70) {
+          targetCore = "m"; selectedAngle = Math.PI; state = "NAV_SPIN"; progress = 0;
+      } else if (state === "ATOM_ALIGN") {
+          if ((hasMessaged || knowledge.atom) && (distCenter < 90 || Math.abs(mx - 180) < 70)) {
+              state = "IDLE"; currentCore = "m"; progress = 0; yOffset = 0; isInitiated = true;
+              knowledge.atom = true;
+              updateInstruction("the miny, vos intérêts nous (re)connectent", false);
+          }
+      } else if (state === "MAP_VIEW" && distCenter < 90) {
+          state = "SPACE_RETURN"; progress = 0;
+      }
+  }
+  isPressing = false;
+};
+
+window.addEventListener("mousedown", onDown); window.addEventListener("mouseup", onUp);
+window.addEventListener("touchstart", (e) => { e.preventDefault(); onDown(e); }, {passive: false});
+window.addEventListener("touchend", (e) => { e.preventDefault(); onUp(e); }, {passive: false});
+
+function drawAtom(x, y, label, radius, isCore, alpha = 1, pulse = false) {
+  ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
+
+  if (pulse) {
+      const p = (Math.sin(Date.now() * 0.003) + 1) / 2;
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * (2 + p * 2));
+      g.addColorStop(0, "rgba(0, 255, 255, 0.15)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, radius * 4, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Glow Effect
+  ctx.shadowColor = "rgba(0, 255, 255, 0.6)";
+  ctx.shadowBlur = pulse ? 20 : 10;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.lineWidth = 1.5;
+  ctx.fillStyle = "#000";
+
+  ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+  ctx.shadowBlur = 0; ctx.fillStyle = "#FFF";
+  ctx.font = isCore ? "200 24px Helvetica Neue" : "200 13px Helvetica Neue";
+  ctx.textAlign = "center";
+
+  let txt = label === "e" ? "" : (label === "message" ? "MESSAGE" : label);
+  ctx.fillText(txt, 0, isCore ? 8 : 4);
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, width, height);
+  ctx.save(); ctx.translate(width / 2, height / 2);
+
+  if (isPressing && (state === "IDLE" || state === "MAP_VIEW")) {
+      pressTimer += 0.016;
+      if (pressTimer > 0.3) {
+          const arc = Math.min(1, (pressTimer - 0.3) * 2);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.8)"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI/2, (-Math.PI/2) + (Math.PI*2*arc)); ctx.stroke();
+          if (arc >= 1) { state = "ATOM_SPIN"; progress = 0; pressTimer = 0; isPressing = false; }
+      }
+  }
+
+  const time = Date.now() * 0.001;
+
+  if (state === "START_M") {
+      progress += 0.015; drawAtom(0, 0, "m", 38, true, Math.min(1, progress));
+      if (progress >= 1) { state = "ECLOSION"; progress = 0; }
+  } else if (state === "ECLOSION") {
+      progress += 0.025; drawAtom(0, 0, "m", 38, true, 1);
+      menus.m.electrons.forEach((l, i) => {
+          const a = menus.m.angles[i], d = 180 * Math.min(1, progress);
+          drawAtom(Math.cos(a)*d, Math.sin(a)*d, l, 22, false, progress);
+      });
+      if (progress >= 1) {
+          state = "IDLE";
+          updateInstruction("the miny, vos intérêts nous (re)connectent");
+          setTimeout(() => { if(!isInitiated) updateInstruction("maintenir m pour éveiller A-TOm", true); }, 2000);
+      }
+  } else if (state === "IDLE") {
+      const float = Math.sin(time * 1.5) * 6;
+      menus[currentCore].electrons.forEach((l, i) => {
+          const ang = menus[currentCore].angles[i] + Math.sin(time * 0.5 + i) * 0.05;
+          drawAtom(Math.cos(ang)*180, Math.sin(ang)*180 + float, l, 22, false, 1);
+      });
+      drawAtom(0, float, currentCore, 38, true, 1, (showHalo && currentCore !== "m" || !isInitiated));
+  } else if (state === "ATOM_SPIN") {
+      progress += 0.02; const rot = progress * Math.PI * 4;
+      ["A", "-", "T", "O", "m"].forEach((c, i) => {
+          const d = 180 * (1 - progress);
+          drawAtom(Math.cos(rot + (i * Math.PI * 2 / 5)) * d, Math.sin(rot + (i * Math.PI * 2 / 5)) * d, c, 22, true, 1);
+      });
+      if (progress >= 1) { state = "ATOM_ALIGN"; progress = 0; }
+  } else if (state === "ATOM_ALIGN") {
+      progress += 0.025;
+      if (progress > 1) yOffset = Math.min(1, yOffset + 0.04);
+      ctx.save(); ctx.translate(0, -(yOffset * 160));
+      const pos = [-160, -80, 0, 80, 160], chars = ["A", "-", "T", "O", "m"];
+      pos.forEach((tx, i) => drawAtom(tx * Math.min(1, progress * 1.2), 0, chars[i], 22, true, 1, (i===4 && hasMessaged)));
+      ctx.restore();
+      if (yOffset > 0.8) {
+          let a = (yOffset - 0.8) * 5;
+          drawAtom(0, 100, "message", 34, true, a, true);
+          ctx.fillStyle = `rgba(255, 255, 255, ${a * 0.5})`;
+          ctx.font = "200 12px Helvetica Neue"; ctx.letterSpacing = "4px";
+          ctx.fillText("DEMARRER LA CONVERSATION", 0, 180);
+      }
+  } else if (state === "NAV_SPIN" || state === "SPACE_JUMP" || state === "SPACE_RETURN" || state === "MAP_VIEW") {
+      if (state === "NAV_SPIN") {
+          progress += 0.04; const t = progress, spin = t * Math.PI * 2;
+          drawAtom(Math.cos(selectedAngle + spin) * 180 * (1-t), Math.sin(selectedAngle + spin) * 180 * (1-t), targetCore, 22+(16*t), true, 1, true);
+          if (t > 0.4) {
+              const nt = (t-0.4)*1.6;
+              menus[targetCore].electrons.forEach((l, i) => drawAtom(Math.cos(menus[targetCore].angles[i] + (1-nt)*Math.PI)*180*nt, Math.sin(menus[targetCore].angles[i] + (1-nt)*Math.PI)*180*nt, l, 22, false, nt));
+          }
+          if (progress >= 1) { currentCore = targetCore; state = "IDLE"; progress = 0; updateInstruction("the miny, vos intérêts nous (re)connectent"); }
+      } else {
+          let p = (state === "SPACE_JUMP") ? progress : (state === "SPACE_RETURN" ? 1-progress : 1);
+          let zoom = Math.pow(p, 3) * 40 + 1;
+          ctx.strokeStyle = `rgba(0, 255, 255, ${0.1 * p})`;
+          ctx.lineWidth = 1;
+          for(let i = -10; i <= 10; i++) {
+              ctx.beginPath(); ctx.moveTo(i * 80 * zoom, -height); ctx.lineTo(i * 80 * zoom, height); ctx.stroke();
+              ctx.beginPath(); ctx.moveTo(-width, i * 80 * zoom); ctx.lineTo(width, i * 80 * zoom); ctx.stroke();
+          }
+          drawAtom(0, 0, "n", 40, true, 1, true);
+          if (state !== "MAP_VIEW") progress += 0.02;
+          if (progress >= 1 && state === "SPACE_JUMP") { state = "MAP_VIEW"; progress = 0; }
+          if (progress >= 1 && state === "SPACE_RETURN") { state = "IDLE"; currentCore = "m"; progress = 0; }
+      }
+  }
+  ctx.restore(); requestAnimationFrame(draw);
+}
+draw();
+</script>
 </body>
 </html>
