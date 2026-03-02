@@ -7,34 +7,45 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>the miny</title>
 <style>
+  :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); }
   body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: -apple-system, sans-serif; color: #fff; touch-action: none; }
-  canvas { display: block; }
-  #ui { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 60px 30px; }
-  #voice { font-size: 10px; letter-spacing: 5px; color: #0FF; text-align: center; height: 40px; text-transform: uppercase; font-weight: 200; text-shadow: 0 0 10px rgba(0,255,255,0.5); }
-  #input-wrap { pointer-events: auto; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-  input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 16px; outline: none; padding: 10px; letter-spacing: 5px; font-weight: 100; text-transform: uppercase; }
+  canvas { display: block; position: absolute; top: 0; left: 0; }
+
+  #ui { 
+      position: fixed; inset: 0; z-index: 10; pointer-events: none; 
+      display: flex; flex-direction: column; justify-content: space-between; 
+      padding: calc(var(--safe-top) + 20px) 30px calc(var(--safe-bottom) + 40px) 30px; 
+  }
+
+  #voice { font-size: 10px; letter-spacing: 5px; color: #0FF; text-align: center; height: 40px; text-transform: uppercase; font-weight: 200; }
+
+  #input-wrap { 
+      pointer-events: auto; background: rgba(255,255,255,0.05); 
+      border-radius: 40px; backdrop-filter: blur(15px); padding: 0 15px;
+      border: 1px solid rgba(255,255,255,0.1);
+  }
+  input { background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 16px; outline: none; padding: 15px; letter-spacing: 4px; font-weight: 100; text-transform: uppercase; }
+
   #gate { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; }
-  .btn { border: 1px solid #222; padding: 15px 30px; border-radius: 40px; font-size: 9px; letter-spacing: 5px; color: #444; }
+  .btn { border: 1px solid #333; padding: 15px 30px; border-radius: 40px; font-size: 9px; letter-spacing: 5px; color: #666; }
 </style>
 </head>
 <body>
 
 <div id="gate" onclick="init()">
-   <div class="btn">SYSTÈME NERVEUX v22.25</div>
+   <div class="btn">ÉVEILLER LE NOYAU</div>
 </div>
 
 <div id="ui">
    <div id="voice">NOYAU PRÊT</div>
-   <div id="input-wrap"><input type="text" id="flow" placeholder="FLUX D'INTÉRÊT..." autocomplete="off"></div>
+   <div id="input-wrap"><input type="text" id="flow" placeholder="AJOUTER UN FLUX" autocomplete="off"></div>
 </div>
 
 <canvas id="c"></canvas>
 
 <script>
-const c = document.getElementById("c");
-const ctx = c.getContext("2d");
-const voice = document.getElementById("voice");
-const flow = document.getElementById("flow");
+const c = document.getElementById("c"), ctx = c.getContext("2d");
+const voice = document.getElementById("voice"), flow = document.getElementById("flow");
 
 let w, h, ratio, cSize, atoms = [], collisions = [], loc = "NANTES : RECHERCHE...";
 
@@ -42,7 +53,7 @@ function say(t) { voice.innerText = t; }
 
 function init() {
    document.getElementById("gate").style.display = "none";
-   say("A-TOm : RÉSONANCE ACTIVE");
+   say("A-TOm ACTIVÉ");
    navigator.geolocation.getCurrentPosition(p => {
        loc = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
    });
@@ -53,18 +64,18 @@ function resize() {
    w = window.innerWidth; h = window.innerHeight;
    c.width = w * ratio; c.height = h * ratio;
    ctx.scale(ratio, ratio);
-   cSize = w * 0.16;
+   cSize = w * 0.15; // Taille du noyau "m" réduite pour aérer
 }
 window.addEventListener("resize", resize); resize();
 
 flow.addEventListener("keydown", (e) => {
    if(e.key === "Enter" && flow.value) {
-       atoms.push({ l: flow.value, a: Math.random()*6, d: 500, td: 130, c: "#0FF" });
-       const v = flow.value; flow.value = "";
-       say(`RECHERCHE DE COLLISION : ${v}`);
+       atoms.push({ l: flow.value, a: Math.random()*6, d: 400, td: 140, c: "#0FF" });
+       say(`FLUX ANALYSÉ : ${flow.value}`);
+       flow.value = "";
        setTimeout(() => {
-           collisions.push({ l: v, a: Math.random()*6, d: 600, td: 210, c: "#FFF", m: "REJOINDRE LE FLUX ?" });
-           say("COLLISION ÉTABLIE");
+           collisions.push({ l: "PROXIMITÉ", a: Math.random()*6, d: 500, td: 220, c: "#FFF", m: "COLLISION RÉELLE" });
+           say("COLLISION DÉTECTÉE");
        }, 2000);
    }
 });
@@ -74,33 +85,30 @@ function draw() {
    ctx.save(); ctx.translate(w/2, h/2);
    const time = Date.now() * 0.002;
 
-   // NOYAU m
-   const p = (Math.sin(time*2)+1)/2;
-   ctx.shadowBlur = 10 * p; ctx.shadowColor = "#0FF";
-   ctx.strokeStyle = "rgba(255,255,255,0.8)";
+   // NOYAU
+   ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 1;
    ctx.beginPath(); ctx.arc(0, 0, cSize/2, 0, Math.PI*2); ctx.stroke();
-   ctx.shadowBlur = 0; ctx.fillStyle = "#fff"; ctx.font = "100 20px Helvetica"; ctx.textAlign="center";
+   ctx.fillStyle = "#fff"; ctx.font = "100 20px Helvetica"; ctx.textAlign="center";
    ctx.fillText("m", 0, 7);
 
-   // DESSIN DES ORBITES
+   // FLUX ET COLLISIONS
    [atoms, collisions].forEach((g, idx) => {
        g.forEach(at => {
-           at.a += (idx === 0 ? 0.005 : -0.002);
+           at.a += (idx === 0 ? 0.006 : -0.003);
            at.d += (at.td - at.d) * 0.05;
            const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
-           ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.3);
-           ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI*2); ctx.stroke();
+           ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.4);
+           ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2); ctx.stroke();
            ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
-           ctx.fillText(at.l.toUpperCase(), x, y + 24);
-           if(idx === 1 && at.d < 220) {
-               ctx.fillStyle = "#0FF"; ctx.fillText(at.m, x, y - 18);
-               ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(x,y); 
-               ctx.strokeStyle = "rgba(0,255,255,0.1)"; ctx.stroke();
+           ctx.fillText(at.l.toUpperCase(), x, y + 26);
+           if(idx === 1 && at.d < 250) {
+               ctx.fillStyle = "#0FF"; ctx.fillText(at.m, x, y - 22);
            }
        });
    });
 
-   ctx.globalAlpha = 0.2; ctx.font = "7px Helvetica"; ctx.fillText(loc, 0, h/2 - 90);
+   ctx.globalAlpha = 0.2; ctx.font = "7px Helvetica"; 
+   ctx.fillText(loc, 0, h/2 - 60); // Remonté pour être visible
    ctx.restore(); requestAnimationFrame(draw);
 }
 draw();
