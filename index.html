@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>The Miny - v18.4 [NUCLEAR CORE 19.5]</title>
+<title>The Miny - v18.4 [REACTOR 19.5]</title>
 <style>
    body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; cursor: crosshair; user-select: none; touch-action: none; }
    #instruction { position: absolute; bottom: 80px; color: #fff; font-family: 'Helvetica Neue', Helvetica; font-weight: 200; font-size: 14px; letter-spacing: 3px; opacity: 0; transition: opacity 0.8s; text-align: center; width: 100%; pointer-events: none; z-index: 10; }
@@ -13,24 +13,21 @@
 <canvas id="minyCanvas"></canvas>
 
 <script>
-/** * MODULE 19.5 : LE RÉACTEUR (CHÂSSIS DÉPORTÉ)
+/** * MODULE 19.5 & 24 : RÉACTEUR & SONAR DÉPORTÉ 
 */
 const REACTOR = {
-   entropy: 0,
-   async ignite() {
-       const data = new Uint32Array(256);
-       window.crypto.getRandomValues(data);
-       this.entropy = data[0] / 0xFFFFFFFF;
-       console.log("A-TOM >>> RÉACTEUR ALIMENTÉ.");
-       return true;
-   },
-   getPulse() {
-       // Fréquence cardiaque du réacteur (19.5)
-       return Math.sin(Date.now() * (0.002 + (this.entropy * 0.001)));
+   entropy: Math.random(),
+   ghosts: [],
+   update() {
+       // Simulation du signal de Nantes (Résonance de proximité)
+       if (Math.random() > 0.997 && this.ghosts.length < 1) {
+           this.ghosts.push({ label: "DESIGN", a: Math.random()*Math.PI*2, o: 0, d: 240 });
+           if(navigator.vibrate) navigator.vibrate(10);
+       }
    }
 };
 
-/** * STRUCTURE 18.4 (STRICTO SENSU)
+/** * STRUCTURE 18.4 (STRICTO SENSU) 
 */
 const canvas = document.getElementById("minyCanvas");
 const ctx = canvas.getContext("2d");
@@ -73,6 +70,16 @@ const onDown = (e) => {
    const t = e.touches ? e.touches[0] : e;
    const mx = t.clientX - width/2, my = t.clientY - height/2;
    const dist = Math.sqrt(mx*mx + my*my);
+
+   // Interaction avec les Ghost i (M28)
+   REACTOR.ghosts.forEach((g, i) => {
+       const gx = Math.cos(g.a)*g.d, gy = Math.sin(g.a)*g.d;
+       if (Math.sqrt((mx-gx)**2 + (my-gy)**2) < 40) {
+           // Fusion ! (M25)
+           REACTOR.ghosts.splice(i, 1);
+           if(navigator.vibrate) navigator.vibrate([10, 50]);
+       }
+   });
 
    if (state === "IDLE" && dist > 55) {
        if (!isInitiated && currentCore === "m") return;
@@ -117,8 +124,7 @@ function drawAtom(x, y, label, radius, isCore, alpha = 1, pulse = false) {
        ctx.fillStyle = "#FFF"; ctx.font = "300 28px Helvetica Neue"; ctx.textAlign = "center"; ctx.fillText("-", 0, 10);
    } else if (label !== "") {
        if(pulse) {
-           // M26 : Pulsation Phononique synchronisée sur le Réacteur
-           const p = Math.pow(Math.abs(REACTOR.getPulse()), 2);
+           const p = Math.pow(Math.abs(Math.sin(Date.now() * 0.002)), 2);
            const g = ctx.createRadialGradient(0, 0, radius, 0, 0, radius * (2 + p * 1.5));
            g.addColorStop(0, "rgba(0, 255, 255, 0.5)"); g.addColorStop(1, "rgba(0, 0, 0, 0)");
            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, radius * 5, 0, Math.PI*2); ctx.fill();
@@ -142,12 +148,7 @@ function draw() {
            const arc = Math.min(1, (pressTimer - 0.4) * 1.5);
            ctx.strokeStyle = "#FFF"; ctx.lineWidth = 3;
            ctx.beginPath(); ctx.arc(0, 0, 52, -Math.PI/2, (-Math.PI/2) + (Math.PI*2*arc)); ctx.stroke();
-           if (arc >= 1) { 
-               // M19.5 : Ignite Reactor before Spin
-               REACTOR.ignite().then(() => {
-                   state = "ATOM_SPIN"; progress = 0; pressTimer = 0; isPressing = false;
-               });
-           }
+           if (arc >= 1) { state = "ATOM_SPIN"; progress = 0; pressTimer = 0; isPressing = false; }
        }
    }
 
@@ -162,15 +163,24 @@ function draw() {
        });
        if (progress >= 1) { state = "IDLE"; updateInstruction("the miny, vos intérêts nous (re)connectent", false); setTimeout(() => { if(state === "IDLE" && currentCore === "m" && !isInitiated) updateInstruction("maintenir m pour éveiller A-TOm", true); }, 1500); }
    } else if (state === "IDLE") {
-       // M26 : Oscillation alimentée par le Réacteur
-       const osc = REACTOR.getPulse() * 5;
+       const osc = Math.sin(Date.now() * 0.002) * 5;
        menus[currentCore].electrons.forEach((l, i) => {
            drawAtom(Math.cos(menus[currentCore].angles[i])*(180 + osc), Math.sin(menus[currentCore].angles[i])*(180 + osc), l, 25, false, 1);
        });
        drawAtom(0, 0, currentCore, 40, true, 1, showHalo);
-   }
-   // ... [Reste des états ATOM_SPIN, ATOM_ALIGN, NAV_SPIN etc. identiques à 18.4]
-   else if (state === "ATOM_SPIN") {
+
+       // --- INJECTION MODULE 28 (GHOST ORBIT) ---
+       REACTOR.update();
+       REACTOR.ghosts.forEach(g => {
+           if(g.o < 0.4) g.o += 0.01;
+           const x = Math.cos(g.a) * (g.d + osc);
+           const y = Math.sin(g.a) * (g.d + osc);
+           ctx.save(); ctx.translate(x, y); ctx.globalAlpha = g.o;
+           ctx.strokeStyle = "#0FF"; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.stroke();
+           ctx.fillStyle = "#FFF"; ctx.font = "100 10px Helvetica Neue"; ctx.textAlign = "center"; ctx.fillText(g.label, 0, 4);
+           ctx.restore();
+       });
+   } else if (state === "ATOM_SPIN") {
        progress += 0.02; const rot = progress * Math.PI * 4;
        ["A", "-", "T", "O", "m"].forEach((c, i) => drawAtom(Math.cos(rot + (i * Math.PI * 2 / 5)) * 180 * (1-progress), Math.sin(rot + (i * Math.PI * 2 / 5)) * 180 * (1-progress), c, 22, true, 1));
        if (progress >= 1) { state = "ATOM_ALIGN"; progress = 0; if (!knowledge.atom) { updateInstruction("toucher m pour revenir", true); knowledge.atom = true; } else { updateInstruction("the miny, vos intérêts nous (re)connectent", false); } }
@@ -194,7 +204,6 @@ function draw() {
            if (progress >= 1 && state === "SPACE_RETURN") { state = "IDLE"; currentCore = "m"; progress = 0; updateInstruction("the miny, vos intérêts nous (re)connectent", false); }
        }
    }
-
    ctx.restore(); requestAnimationFrame(draw);
 }
 draw();
