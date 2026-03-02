@@ -3,23 +3,23 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-   <title>the miny - v17.5</title>
+   <title>the miny - v17.5.1</title>
    <style>
        body { 
            margin: 0; background: #000; color: #fff; 
            font-family: -apple-system, sans-serif; 
            height: 100vh; display: flex; flex-direction: column; 
-           justify-content: center; align-items: center; overflow: hidden; 
+           align-items: center; justify-content: flex-start; overflow: hidden; 
+           padding-top: 20vh;
        }
 
-       /* LE SCEAU V17.5 : Géométrie Sacrée */
+       /* LE SCEAU : Géométrie Cyan Glacé */
        #sceau { 
            width: 90px; height: 90px; position: relative; 
-           margin-bottom: 60px; cursor: pointer;
+           margin-bottom: 40px; cursor: pointer;
            transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
        }
 
-       /* Noyau central resserré "m" */
        .noyau {
            width: 8px; height: 8px; background: #fff; border-radius: 50%;
            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -30,10 +30,8 @@
            width: 6px; height: 6px; background: #e0ffff; 
            position: absolute; border-radius: 50%; 
            box-shadow: 0 0 12px rgba(224, 255, 255, 0.9);
-           transition: all 0.3s ease;
        }
 
-       /* Positionnement triangulaire strict (Sceau v17.5) */
        #e1 { top: 0; left: 50%; transform: translateX(-50%); }
        #e2 { bottom: 0; left: 0; }
        #e3 { bottom: 0; right: 0; }
@@ -43,15 +41,33 @@
            border-bottom: 1px solid #222; color: #fff; 
            text-align: center; font-size: 1.1rem; outline: none; 
            width: 220px; letter-spacing: 5px; padding: 10px 0;
-           text-transform: uppercase;
+           text-transform: uppercase; margin-bottom: 20px;
        }
+
+       /* THE STREAM (LE FLUX) */
+       #stream {
+           width: 100%; max-width: 300px;
+           height: 30vh; overflow-y: auto;
+           mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+           -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+           padding: 10px;
+       }
+
+       .flux-item {
+           font-size: 0.6rem; letter-spacing: 2px; color: #444;
+           text-transform: uppercase; margin-bottom: 15px;
+           border-left: 1px solid #222; padding-left: 10px;
+           animation: fadeIn 0.8s ease forwards;
+       }
+
+       .flux-item b { color: #e0ffff; }
+
+       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
        #status { 
-           margin-top: 40px; font-size: 0.6rem; letter-spacing: 3px; 
-           color: #444; text-align: center; line-height: 2; text-transform: uppercase;
+           font-size: 0.55rem; letter-spacing: 2px; color: #333; 
+           text-align: center; margin-top: 10px; text-transform: uppercase;
        }
-
-       .highlight { color: #e0ffff; font-weight: bold; }
    </style>
 </head>
 <body>
@@ -65,47 +81,37 @@
 
    <input type="text" id="input-flux" placeholder="INTERÊT" onkeydown="if(event.key==='Enter') activerCollision()">
 
-   <div id="status">SYSTÈME PASSIF<br>PRÊT POUR L'ANCRAGE</div>
+   <div id="stream"></div>
+   <div id="status">SYSTÈME PASSIF | NANTES</div>
 
    <script>
        function activerCollision() {
-           const val = document.getElementById('input-flux').value;
+           const input = document.getElementById('input-flux');
+           const val = input.value;
            if(!val) return;
 
            const sceau = document.getElementById('sceau');
-           const status = document.getElementById('status');
+           const stream = document.getElementById('stream');
 
-           // Spin de Scan
            sceau.style.transform = 'rotate(1080deg)';
-           status.innerHTML = 'SCAN DE RÉSONANCE...';
 
            navigator.geolocation.getCurrentPosition(function(position) {
-               const lat = position.coords.latitude;
-               const lon = position.coords.longitude;
-
-               // Simulation de la déferlante
-               const intensite = Math.floor(Math.random() * 40) + 60; // Haute résonance pour le test
+               const lat = position.coords.latitude.toFixed(3);
+               const lon = position.coords.longitude.toFixed(3);
+               const intensite = Math.floor(Math.random() * 40) + 60;
                const collisions = Math.floor(Math.random() * 8) + 1;
 
                setTimeout(() => {
-                   status.innerHTML = 
-                       'FLUX ANCRÉ : <span class="highlight">' + val + '</span><br>' +
-                       'RÉSONANCE : <span class="highlight">' + intensite + '%</span> | ' + collisions + ' COLLISIONS<br>' +
-                       lat.toFixed(3) + ' / ' + lon.toFixed(3) + ' | NANTES';
+                   // Création de l'élément dans le flux
+                   const item = document.createElement('div');
+                   item.className = 'flux-item';
+                   item.innerHTML = `<b>${val}</b> • ${intensite}% RESONANCE<br>${collisions} COLLISIONS • ${lat}/${lon}`;
+
+                   stream.insertBefore(item, stream.firstChild);
 
                    sceau.style.transform = 'rotate(0deg)';
-
-                   // Feedback visuel : les électrons se resserrent vers le noyau
-                   document.querySelectorAll('.electron').forEach(e => {
-                       e.style.boxShadow = '0 0 20px #e0ffff';
-                   });
+                   input.value = ''; // Reset input pour le prochain flux
                }, 1000);
-
-               // Sauvegarde locale de l'intérêt (La Mémoire de l'Atome)
-               localStorage.setItem('dernier_flux', val);
-
-           }, function() {
-               status.innerText = 'ERREUR D\'ANCRAGE';
            });
        }
    </script>
