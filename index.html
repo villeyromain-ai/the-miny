@@ -6,114 +6,138 @@
    <meta name="apple-mobile-web-app-capable" content="yes">
    <style>
        :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
-       /* Verrouillage total du viewport */
        body, html { 
            margin: 0; padding: 0; background: #000; overflow: hidden; 
            height: 100%; width: 100%; position: fixed;
-           font-family: -apple-system, sans-serif;
+           -webkit-font-smoothing: antialiased;
        }
 
-       /* LE CANVAS : C'est la base, il ne dépend d'aucun conteneur */
-       #stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+       /* CHAMP DE FORCE VISUEL */
+       #quantum-stage { 
+           position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+           z-index: 1; transform: translateZ(0); /* Accélération GPU pure */
+       }
 
-       /* L'INTERFACE : Elle flotte par dessus, totalement indépendante */
-       #ui {
+       /* INTERFACE NEUTRINO (Passe à travers tout) */
+       #the-miny-ui {
            position: fixed; inset: 0; z-index: 10;
            display: flex; flex-direction: column;
-           padding: calc(var(--sat) + 20px) 20px calc(var(--sab) + 20px) 20px;
-           pointer-events: none; box-sizing: border-box;
+           padding: calc(var(--sat) + 25px) 25px calc(var(--sab) + 25px) 25px;
+           pointer-events: none;
        }
-       #header { text-align: center; color: #0FF; font-size: 10px; letter-spacing: 5px; text-transform: uppercase; font-weight: 300; }
-       #footer { margin-top: auto; display: flex; flex-direction: column; align-items: center; }
-       #pill { 
-           width: 100%; max-width: 400px; background: rgba(255,255,255,0.08); 
-           border-radius: 50px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.12);
-           pointer-events: auto;
+       header { flex: 0; text-align: center; color: #0FF; font-size: 10px; letter-spacing: 6px; font-weight: 200; text-transform: uppercase; }
+       footer { margin-top: auto; display: flex; flex-direction: column; align-items: center; }
+
+       #flux-box { 
+           width: 100%; max-width: 450px; background: rgba(255,255,255,0.03); 
+           border-radius: 40px; border: 0.5px solid rgba(0,255,255,0.2);
+           pointer-events: auto; backdrop-filter: blur(30px);
+           box-shadow: 0 0 30px rgba(0,255,255,0.05);
        }
        input { 
            background: transparent; border: none; color: #fff; width: 100%; 
-           text-align: center; font-size: 16px; outline: none; padding: 18px 0; 
-           letter-spacing: 2px; text-transform: uppercase; font-weight: 200;
+           text-align: center; font-size: 15px; outline: none; padding: 20px 0; 
+           letter-spacing: 3px; font-weight: 100; text-transform: uppercase;
        }
-       #nantes { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 15px; letter-spacing: 2px; }
-
-       #boot { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #444; font-size: 10px; letter-spacing: 5px; }
+       .coords { font-size: 8px; color: #0FF; opacity: 0.4; margin-top: 20px; letter-spacing: 4px; }
+       #boot { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 11px; letter-spacing: 8px; cursor: pointer; font-weight: 100; }
    </style>
 </head>
 <body>
 
-<div id="boot" onclick="this.style.display='none'">STABILISER LE SYSTÈME</div>
+<div id="boot" onclick="this.style.display='none'">INIT A-TOM QUANTUM</div>
 
-<canvas id="stage"></canvas>
+<canvas id="quantum-stage"></canvas>
 
-<div id="ui">
-   <div id="header">A-TOM : VEILLE</div>
-   <div id="footer">
-       <div id="pill"><input type="text" id="inp" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
-       <div id="nantes">NANTES : 47.349 / -1.541</div>
-   </div>
+<div id="the-miny-ui">
+   <header>A-TOM : REVEIL</header>
+   <footer>
+       <div id="flux-box"><input type="text" id="flow" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
+       <div class="coords" id="loc">LOCATING...</div>
+   </footer>
 </div>
 
 <script>
-const stage = document.getElementById('stage'), ctx = stage.getContext('2d');
-const inp = document.getElementById('inp');
-let w, h, ratio, atoms = [];
+const canvas = document.getElementById('quantum-stage'), ctx = canvas.getContext('2d', {alpha: false});
+const flowInput = document.getElementById('flow');
+let w, h, dpr, particles = [];
 
-function sync() {
-   ratio = window.devicePixelRatio || 1;
-   // On utilise visualViewport pour contrer les bugs de Safari
-   w = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-   h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-   stage.width = w * ratio; stage.height = h * ratio;
-   ctx.scale(ratio, ratio);
+// RE-NORMALISATION DE L'ESPACE
+function collapse() {
+   dpr = window.devicePixelRatio || 1;
+   w = window.innerWidth; h = window.innerHeight;
+   canvas.width = w * dpr; canvas.height = h * dpr;
+   ctx.scale(dpr, dpr);
 }
+window.addEventListener('resize', collapse);
+window.visualViewport?.addEventListener('resize', collapse);
+collapse();
 
-window.addEventListener('resize', sync);
-if(window.visualViewport) window.visualViewport.addEventListener('resize', sync);
-sync();
-
-inp.addEventListener('keydown', (e) => {
-   if(e.key === 'Enter' && inp.value) {
-       atoms.push({ label: inp.value, angle: Math.random()*6, d: 200, targetD: 85 });
-       inp.value = '';
+flowInput.addEventListener('keydown', (e) => {
+   if(e.key === 'Enter' && flowInput.value) {
+       particles.push({ t: flowInput.value, a: Math.random()*Math.PI*2, r: 250, tr: 90, s: 0.015 });
+       flowInput.value = '';
    }
 });
 
-function draw() {
-   ctx.clearRect(0, 0, w, h);
+function render() {
+   // Effacement "vide sidéral"
+   ctx.fillStyle = '#000';
+   ctx.fillRect(0, 0, w, h);
 
-   // CENTRE ABSOLU DU VIEWPORT VISIBLE
-   // Quoi qu'il arrive, on tape au milieu du canvas
-   const cx = w / 2;
-   const cy = h / 2;
+   // CENTRE DE GRAVITÉ UNIVERSEL
+   const midX = w / 2;
+   const midY = h / 2;
 
    ctx.save();
-   ctx.translate(cx, cy);
+   ctx.translate(midX, midY);
 
-   // NOYAU
-   ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+   // LE NOYAU (m) - SCEAU VISUEL
+   ctx.beginPath();
+   ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
    ctx.lineWidth = 1;
-   ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI*2); ctx.stroke();
-   ctx.fillStyle = '#FFF'; ctx.font = '200 20px Helvetica'; ctx.textAlign = 'center';
-   ctx.fillText('m', 0, 7);
+   ctx.arc(0, 0, 30, 0, Math.PI * 2);
+   ctx.stroke();
 
-   // ORBITES
-   atoms.forEach(at => {
-       at.angle += 0.01;
-       at.d += (at.targetD - at.d) * 0.1;
-       const x = Math.cos(at.angle) * at.d;
-       const y = Math.sin(at.angle) * at.d;
+   ctx.fillStyle = '#FFF';
+   ctx.font = '200 22px Helvetica';
+   ctx.textAlign = 'center';
+   ctx.fillText('m', 0, 8);
 
+   // ÉLECTRONS : FLUX D'INTÉRÊTS
+   particles.forEach((p, i) => {
+       p.a += p.s;
+       p.r += (p.tr - p.r) * 0.08;
+       const x = Math.cos(p.a) * p.r;
+       const y = Math.sin(p.a) * p.r;
+
+       // Traceur de lien resserré
+       ctx.beginPath();
+       ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+       ctx.moveTo(0, 0); ctx.lineTo(x, y);
+       ctx.stroke();
+
+       // Sphère d'intérêt
+       ctx.beginPath();
        ctx.strokeStyle = '#0FF';
-       ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2); ctx.stroke();
-       ctx.fillStyle = '#FFF'; ctx.font = '300 9px Helvetica';
-       ctx.fillText(at.label.toUpperCase(), x, y + 25);
+       ctx.arc(x, y, 8, 0, Math.PI*2);
+       ctx.stroke();
+
+       ctx.fillStyle = 'rgba(255,255,255,0.9)';
+       ctx.font = '300 10px Helvetica';
+       ctx.fillText(p.t.toUpperCase(), x, y + 25);
    });
 
    ctx.restore();
-   requestAnimationFrame(draw);
+   requestAnimationFrame(render);
 }
-draw();
+
+// GÉO-SYNCHRONISATION
+navigator.geolocation.getCurrentPosition(pos => {
+   document.getElementById('loc').innerText = `NANTES : ${pos.coords.latitude.toFixed(3)} / ${pos.coords.longitude.toFixed(3)}`;
+});
+
+render();
 </script>
 </body>
 </html>
