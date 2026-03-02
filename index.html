@@ -1,164 +1,158 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-   <title>THE MINY - SINGULARITY</title>
-   <style>
-       :root { --neon: #0FF; --bg: #000; }
-       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-       body, html { margin: 0; padding: 0; background: var(--bg); overflow: hidden; height: 100dvh; font-family: 'Helvetica Neue', sans-serif; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>the miny</title>
+<style>
+  :root { --neon: #0FF; --text: #FFF; --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
 
-       canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+  body, html { 
+      margin: 0; padding: 0; background: #000; overflow: hidden; 
+      height: 100dvh; width: 100vw; position: fixed;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+  }
 
-       #interface-layer {
-           position: relative; z-index: 10; height: 100dvh;
-           display: flex; flex-direction: column; justify-content: space-between;
-           padding: env(safe-area-inset-top) 25px env(safe-area-inset-bottom) 25px;
-       }
+  /* Canvas de Fond : C'est la zone de réalité augmentée */
+  canvas { position: absolute; inset: 0; z-index: 1; touch-action: none; }
 
-       #status { text-align: center; color: var(--neon); font-size: 10px; letter-spacing: 5px; font-weight: 200; padding-top: 20px; opacity: 0.8; }
+  /* Couche d'Interface : Elle flotte par-dessus, normalisée sur la Safe Area */
+  #ui-overlay {
+      position: absolute; inset: 0; z-index: 10;
+      display: flex; flex-direction: column;
+      padding: calc(var(--sat) + 20px) 25px calc(var(--sab) + 20px) 25px;
+      pointer-events: none; box-sizing: border-box;
+  }
 
-       #input-container {
-           width: 100%; display: flex; flex-direction: column; align-items: center; padding-bottom: 40px;
-       }
+  header { flex: 0; text-align: center; }
+  #voice-log { font-size: 11px; letter-spacing: 6px; color: var(--neon); text-transform: uppercase; font-weight: 200; opacity: 0.7; }
 
-       .quantum-pill {
-           width: 100%; max-width: 400px; height: 60px;
-           background: rgba(255,255,255,0.02); border-radius: 30px;
-           border: 0.5px solid rgba(0, 255, 255, 0.15);
-           backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-           display: flex; align-items: center; padding: 0 25px;
-           transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-       }
+  /* Le point mort spatial : Cette zone invisible définit le centre absolu */
+  #core-anchor { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; }
 
-       .quantum-pill:focus-within { border-color: var(--neon); background: rgba(0, 255, 255, 0.05); transform: translateY(-5px); }
+  footer { flex: 0; display: flex; flex-direction: column; align-items: center; width: 100%; gap: 15px; }
 
-       input {
-           background: transparent; border: none; color: #FFF; width: 100%;
-           text-align: center; font-size: 13px; letter-spacing: 3px; outline: none;
-           text-transform: uppercase; font-weight: 300;
-       }
+  #pill-container { 
+      width: 100%; max-width: 420px; 
+      background: rgba(255,255,255,0.07); 
+      border-radius: 60px; backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.12);
+      pointer-events: auto;
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  #pill-container:focus-within { border-color: var(--neon); background: rgba(0,255,255,0.05); }
 
-       #geo-data { font-size: 8px; color: var(--neon); opacity: 0.4; margin-top: 20px; letter-spacing: 2px; }
-   </style>
+  input { 
+      background: transparent; border: none; color: var(--text); 
+      width: 100%; text-align: center; font-size: 16px; outline: none; 
+      padding: 20px 0; letter-spacing: 3px; text-transform: uppercase; font-weight: 200;
+  }
+
+  #loc-tag { font-size: 8px; color: rgba(0,255,255,0.3); letter-spacing: 3px; }
+
+  #ignition { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #444; font-size: 11px; letter-spacing: 8px; }
+</style>
 </head>
 <body>
 
-<canvas id="stage"></canvas>
+<div id="ignition" onclick="ignite()">AMORCER A-TOM</div>
 
-<div id="interface-layer">
-   <div id="status">A-TOM : SYNCHRONISATION</div>
-   <div id="input-container">
-       <div class="quantum-pill">
-           <input type="text" id="atom-flux" placeholder="INJECTER UN INTÉRÊT" autocomplete="off">
-       </div>
-       <div id="geo-data">LOCATING NANTES...</div>
-   </div>
+<div id="ui-overlay">
+  <header><div id="voice-log">A-TOM : VEILLE</div></header>
+  <div id="core-anchor"></div>
+  <footer>
+      <div id="pill-container"><input type="text" id="flow-input" placeholder="AJOUTER UN FLUX" autocomplete="off"></div>
+      <div id="loc-tag">LOCATING...</div>
+  </footer>
 </div>
 
+<canvas id="view"></canvas>
+
 <script>
-const canvas = document.getElementById('stage'), ctx = canvas.getContext('2d');
-let w, h, dpr, points = [];
+const view = document.getElementById("view"), ctx = view.getContext("2d");
+const anchor = document.getElementById("core-anchor"), voice = document.getElementById("voice-log");
+const flowIn = document.getElementById("flow-input"), locTag = document.getElementById("loc-tag");
 
-// LE NOYAU EST LE CENTRE DE L'UNIVERS (m)
-const nucleus = { x: 0, y: 0, r: 35, label: 'm' };
+let w, h, ratio, atoms = [], collisions = [];
 
-function resize() {
-   dpr = window.devicePixelRatio || 1;
-   w = window.innerWidth; h = window.innerHeight;
-   canvas.width = w * dpr; canvas.height = h * dpr;
-   ctx.scale(dpr, dpr);
+function ignite() {
+  document.getElementById("ignition").style.display = "none";
+  voice.innerText = "NOYAU STABILISÉ";
+  navigator.geolocation.getCurrentPosition(p => {
+      locTag.innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
+  });
 }
-window.addEventListener('resize', resize); resize();
 
-// INJECTION DE MATIÈRE (INTÉRÊTS)
-document.getElementById('atom-flux').addEventListener('keydown', (e) => {
-   if(e.key === 'Enter' && e.target.value) {
-       points.push({
-           x: (Math.random() - 0.5) * 100,
-           y: (Math.random() - 0.5) * 100,
-           oldX: (Math.random() - 0.5) * 110,
-           oldY: (Math.random() - 0.5) * 110,
-           label: e.target.value.toUpperCase(),
-           mass: 0.95 + Math.random() * 0.05
-       });
-       e.target.value = '';
-   }
+function sync() {
+  ratio = window.devicePixelRatio || 1;
+  w = window.innerWidth; h = window.innerHeight;
+  view.width = w * ratio; view.height = h * ratio;
+  ctx.scale(ratio, ratio);
+}
+window.addEventListener("resize", sync); sync();
+
+flowIn.addEventListener("keydown", (e) => {
+  if(e.key === "Enter" && flowIn.value) {
+      // Physique Quark : Orbites compressées (max 150px)
+      atoms.push({ l: flowIn.value, a: Math.random()*6, d: 250, td: 85, c: "#0FF" });
+      voice.innerText = "CAPTATION FLUX";
+      flowIn.value = "";
+
+      // Collision Programmée : Étape supplémentaire d'ambition
+      setTimeout(() => {
+          collisions.push({ l: "COLLISION", a: Math.random()*6, d: 350, td: 150, c: "#FFF", msg: "RÉSONANCE ACTIVE" });
+          voice.innerText = "RÉSONANCE INTÉGRÉE";
+      }, 1500);
+  }
 });
 
-function update() {
-   const cx = w/2, cy = h/2;
+function draw() {
+  ctx.clearRect(0, 0, w, h);
 
-   points.forEach(p => {
-       // Moteur Verlet (Vélocité naturelle)
-       const vx = (p.x - p.oldX) * p.mass;
-       const vy = (p.y - p.oldY) * p.mass;
-       p.oldX = p.x; p.oldY = p.y;
-       p.x += vx; p.y += vy;
+  // RECALCUL DU CENTRE PHYSIQUE DE L'ANCRE HTML À CHAQUE FRAME
+  const rect = anchor.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
 
-       // Attraction gravitationnelle vers m
-       const dx = 0 - p.x;
-       const dy = 0 - p.y;
-       const dist = Math.sqrt(dx*dx + dy*dy);
-       const force = (dist - 120) * 0.005; // Distance d'équilibre à 120px
+  // Matrice de Transformation : Le point (0,0) du dessin est le centre réel de l'iPhone
+  ctx.save(); ctx.translate(cx, cy);
 
-       p.x += (dx/dist) * force;
-       p.y += (dy/dist) * force;
-   });
+  // NOYAU CENTRAL (m) : Ancrage visuel indestructible
+  ctx.strokeStyle = "rgba(0,255,255,0.4)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI*2); ctx.stroke();
+
+  ctx.fillStyle = "#fff"; ctx.font = "100 22px Helvetica Neue"; ctx.textAlign="center";
+  ctx.fillText("m", 0, 8);
+
+  // GESTION DES QUARKS (FLUX & RÉSONANCES)
+  [atoms, collisions].forEach((group, idx) => {
+      group.forEach(at => {
+          at.a += (idx === 0 ? 0.007 : -0.003); // Rotation synchrone/asynchrone
+          at.d += (at.td - at.d) * 0.06; // Attraction Quark
+
+          const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
+
+          // Dessin de l'entité
+          ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.5);
+          ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI*2); ctx.stroke();
+
+          // Typographie Normalisée Système
+          ctx.fillStyle = "#fff"; ctx.font = "200 10px Helvetica Neue";
+          ctx.fillText(at.l.toUpperCase(), x, y + 26);
+
+          // Message de collision supplémentaire
+          if(idx === 1 && at.d < 160) {
+              ctx.fillStyle = "#0FF"; ctx.fillText(at.msg, x, y - 22);
+          }
+      });
+  });
+  ctx.restore();
+
+  requestAnimationFrame(draw);
 }
-
-function render() {
-   update();
-   ctx.clearRect(0, 0, w, h);
-   ctx.save();
-   ctx.translate(w/2, h/2);
-
-   // DESSIN DU NOYAU (m)
-   ctx.beginPath();
-   ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
-   ctx.lineWidth = 1;
-   ctx.arc(0, 0, nucleus.r, 0, Math.PI*2);
-   ctx.stroke();
-
-   ctx.fillStyle = '#FFF';
-   ctx.font = '200 28px Helvetica';
-   ctx.textAlign = 'center';
-   ctx.fillText(nucleus.label, 0, 10);
-
-   // DESSIN DES LIAISONS ET ÉLECTRONS
-   points.forEach(p => {
-       // Ligne de tension géométrique
-       ctx.beginPath();
-       ctx.strokeStyle = 'rgba(0, 255, 255, 0.08)';
-       ctx.moveTo(0, 0);
-       ctx.lineTo(p.x, p.y);
-       ctx.stroke();
-
-       // Électron (Particule d'intérêt)
-       ctx.beginPath();
-       ctx.fillStyle = '#0FF';
-       ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
-       ctx.fill();
-
-       // Label Sémantique
-       ctx.fillStyle = 'rgba(255,255,255,0.7)';
-       ctx.font = '300 9px Helvetica';
-       ctx.letterSpacing = "2px";
-       ctx.fillText(p.label, p.x, p.y + 20);
-   });
-
-   ctx.restore();
-   requestAnimationFrame(render);
-}
-
-// GÉO-SCANNER NANTES
-navigator.geolocation.watchPosition(pos => {
-   document.getElementById('geo-data').innerText = `NANTES : ${pos.coords.latitude.toFixed(4)} | ${pos.coords.longitude.toFixed(4)}`;
-   document.getElementById('status').innerText = 'A-TOM : VEILLE ACTIVE';
-});
-
-render();
+draw();
 </script>
 </body>
 </html>
