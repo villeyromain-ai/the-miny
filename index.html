@@ -3,151 +3,171 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>the miny - v22.17 Neural Flow</title>
+<title>the miny - v22.18 Neural Hub</title>
 <style>
-  body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; cursor: none; user-select: none; touch-action: none; font-family: 'SF Pro Display', sans-serif; }
-  #instruction { position: absolute; bottom: 50px; color: rgba(255,255,255,0.3); font-weight: 200; font-size: 10px; letter-spacing: 5px; opacity: 0; transition: 1s; text-align: center; width: 100%; text-transform: uppercase; }
-  #flux-input { position: absolute; top: 15%; opacity: 0; transition: 0.8s; pointer-events: none; }
-  #flux-input.active { opacity: 1; pointer-events: auto; }
-  input { background: transparent; border: none; border-bottom: 1px solid #333; color: #fff; text-align: center; font-size: 1.5rem; outline: none; width: 260px; letter-spacing: 8px; font-weight: 100; text-transform: uppercase; }
+  body { margin: 0; background: #000; overflow: hidden; height: 100vh; font-family: 'SF Pro Display', sans-serif; color: #fff; }
+  canvas { display: block; }
+
+  /* Interface de Chat A-TOm */
+  #chat-hub { 
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(0,0,0,0.95); z-index: 1000; 
+      display: none; flex-direction: column; padding: 40px 20px; box-sizing: border-box;
+      backdrop-filter: blur(20px);
+  }
+  #chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; margin-bottom: 20px; }
+  .msg { font-size: 14px; letter-spacing: 1px; max-width: 80%; line-height: 1.6; }
+  .msg.atom { color: #0FF; font-weight: 200; align-self: flex-start; }
+  .msg.user { color: #fff; align-self: flex-end; text-align: right; }
+  #chat-input { background: transparent; border: none; border-bottom: 1px solid #333; color: #fff; font-size: 16px; outline: none; padding: 10px; width: 100%; box-sizing: border-box; letter-spacing: 2px; }
+
+  #ui-overlay { position: absolute; bottom: 40px; width: 100%; text-align: center; pointer-events: none; z-index: 100; }
+  #status-text { font-size: 10px; letter-spacing: 4px; color: rgba(255,255,255,0.3); text-transform: uppercase; }
 </style>
 </head>
 <body>
-<div id="flux-input"><input type="text" id="input-field" placeholder="..." autocomplete="off"></div>
-<div id="instruction"></div>
+
+<div id="chat-hub">
+   <div id="chat-messages"></div>
+   <input type="text" id="chat-input" placeholder="PARLER A A-TOm..." autocomplete="off">
+   <div style="margin-top:20px; text-align:center; font-size:10px; color:#333;" onclick="toggleChat()">RETOUNER AU NOYAU</div>
+</div>
+
+<div id="ui-overlay">
+   <div id="status-text">INITIALISATION DES SYSTÈMES...</div>
+</div>
+
 <canvas id="minyCanvas"></canvas>
 
 <script>
 const canvas = document.getElementById("minyCanvas");
 const ctx = canvas.getContext("2d");
-const inputField = document.getElementById("input-field");
-const fluxInput = document.getElementById("flux-input");
+const statusText = document.getElementById("status-text");
+const chatHub = document.getElementById("chat-hub");
+const chatMessages = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
 
-let width, height, ratio;
-let state = "IDLE", currentCore = "m";
-let progress = 0, pressTimer = 0, isPressing = false;
-let atoms = []; // Stockage des électrons dynamiques
-let ripple = { x: 0, y: 0, r: 0, a: 0 };
-
-// Configuration initiale des électrons de base
-const baseElectrons = [
-   { label: "n", angle: -Math.PI/2, dist: 180, type: "nav" },
-   { label: "y", angle: Math.PI/6, dist: 180, type: "nav" },
-   { label: "i", angle: 5*Math.PI/6, dist: 180, type: "nav" }
-];
+let state = "IDLE", currentCore = "m", progress = 0, isPressing = false, pressTimer = 0;
+let width, height, ratio, yOffset = 0;
+let atoms = [], locationActive = false;
 
 function resize() {
-  ratio = window.devicePixelRatio || 1;
-  width = window.innerWidth; height = window.innerHeight;
-  canvas.width = width * ratio; canvas.height = height * ratio;
-  ctx.scale(ratio, ratio);
+   ratio = window.devicePixelRatio || 1;
+   width = window.innerWidth; height = window.innerHeight;
+   canvas.width = width * ratio; canvas.height = height * ratio;
+   ctx.scale(ratio, ratio);
 }
 window.addEventListener("resize", resize); resize();
 
-function triggerRipple(x, y) {
-   ripple = { x, y, r: 0, a: 1 };
+// --- LOGIQUE A-TOm & CHAT ---
+function toggleChat() {
+   chatHub.style.display = (chatHub.style.display === "flex") ? "none" : "flex";
+   if(chatHub.style.display === "flex") {
+       addMessage("atom", "Je suis A-TOm. Tes intérêts à Nantes sont ma priorité. De quoi veux-tu discuter ?");
+       chatInput.focus();
+   }
 }
 
-function addSuggestion(label) {
-   const angle = Math.random() * Math.PI * 2;
-   atoms.push({ label, angle, dist: 300, targetDist: 200, opacity: 0, type: "discovery" });
+function addMessage(sender, text) {
+   const div = document.createElement("div");
+   div.className = `msg ${sender}`;
+   div.innerText = text;
+   chatMessages.appendChild(div);
+   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-inputField.addEventListener("keydown", (e) => {
-   if(e.key === "Enter") {
-       const val = inputField.value;
-       if(val) {
-           triggerRipple(0, 0);
-           addSuggestion(val);
-           inputField.value = "";
-           fluxInput.classList.remove("active");
-           document.getElementById("instruction").innerHTML = "flux " + val + " ancré";
-       }
+chatInput.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && chatInput.value) {
+       const val = chatInput.value;
+       addMessage("user", val);
+       chatInput.value = "";
+       setTimeout(() => {
+           addMessage("atom", "Analyse de résonance en cours pour : " + val + ". Je configure tes électrons.");
+           addDiscoveryAtom(val);
+       }, 1000);
    }
 });
 
-const onDown = (e) => {
-  isPressing = true; pressTimer = 0;
-  const t = e.touches ? e.touches[0] : e;
-  const mx = t.clientX - width/2, my = t.clientY - height/2;
+function addDiscoveryAtom(label) {
+   atoms.push({ label, ang: Math.random()*6.28, d: 400, targetD: 180 + (Math.random()*40), a: 0 });
+}
 
-  // Détection clic sur noyau
-  if (Math.sqrt(mx*mx + my*my) < 50) {
-      pressTimer = 0.01;
-  }
-};
+// --- PERMISSION GPS ---
+function requestLocation() {
+   statusText.innerText = "RECHERCHE DE RÉSONANCE...";
+   navigator.geolocation.getCurrentPosition((pos) => {
+       locationActive = true;
+       const locStr = `${pos.coords.latitude.toFixed(3)} / ${pos.coords.longitude.toFixed(3)}`;
+       statusText.innerHTML = `RÉSONANCE ACTIVE<br>NANTES : ${locStr}`;
+   }, () => {
+       statusText.innerText = "ERREUR DE LOCALISATION";
+   });
+}
 
-const onUp = (e) => {
-  if (isPressing && pressTimer < 0.3) {
-      fluxInput.classList.toggle("active");
-      if(fluxInput.classList.contains("active")) inputField.focus();
-  }
-  isPressing = false;
-};
+// --- INTERACTION ---
+window.addEventListener("mousedown", (e) => {
+   isPressing = true; pressTimer = 0;
+   if(!locationActive) requestLocation();
 
-window.addEventListener("mousedown", onDown); window.addEventListener("mouseup", onUp);
-window.addEventListener("touchstart", (e) => { e.preventDefault(); onDown(e); }, {passive: false});
-window.addEventListener("touchend", (e) => { e.preventDefault(); onUp(e); }, {passive: false});
+   const mx = e.clientX - width/2, my = e.clientY - height/2;
+   if(state === "ATOM_ALIGN" && Math.sqrt(mx*mx + (my-80)**2) < 50) toggleChat();
+});
 
-function drawAtom(x, y, label, radius, isCore, alpha = 1, pulse = false) {
-  ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
-  if (pulse) {
-      const p = (Math.sin(Date.now() * 0.005) + 1) / 2;
-      ctx.fillStyle = "rgba(0, 255, 255, "+(0.1 * p)+")";
-      ctx.beginPath(); ctx.arc(0, 0, radius * 3.5, 0, Math.PI*2); ctx.fill();
-  }
-  ctx.shadowColor = "rgba(0, 255, 255, 0.4)"; ctx.shadowBlur = 12;
-  ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.5; ctx.fillStyle = "#000";
-  ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.shadowBlur = 0; ctx.fillStyle = "#FFF";
-  ctx.font = "200 " + (isCore ? "22px" : "12px") + " Helvetica Neue";
-  ctx.textAlign = "center"; ctx.fillText(label.toUpperCase(), 0, isCore ? 8 : 4);
-  ctx.restore();
+window.addEventListener("mouseup", () => isPressing = false);
+window.addEventListener("touchstart", (e) => { e.preventDefault(); requestLocation(); isPressing = true; });
+
+function drawAtom(x, y, label, radius, isCore, alpha=1, pulse=false) {
+   ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
+   if(pulse) {
+       const p = (Math.sin(Date.now()*0.005)+1)/2;
+       ctx.fillStyle = `rgba(0, 255, 255, ${0.1 * p})`;
+       ctx.beginPath(); ctx.arc(0,0,radius*4,0,Math.PI*2); ctx.fill();
+   }
+   ctx.shadowColor = "rgba(0,255,255,0.5)"; ctx.shadowBlur = 10;
+   ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.fillStyle = "#000";
+   ctx.beginPath(); ctx.arc(0,0,radius,0,Math.PI*2); ctx.fill(); ctx.stroke();
+   ctx.fillStyle = "#fff"; ctx.font = "200 "+(isCore?"22px":"12px")+" Helvetica";
+   ctx.textAlign = "center"; ctx.fillText(label.toUpperCase(), 0, isCore?8:4);
+   ctx.restore();
 }
 
 function draw() {
-  ctx.clearRect(0, 0, width, height);
-  ctx.save(); ctx.translate(width / 2, height / 2);
-  const time = Date.now() * 0.002;
+   ctx.clearRect(0, 0, width, height);
+   ctx.save(); ctx.translate(width/2, height/2);
+   const time = Date.now()*0.002;
+   const floatY = Math.sin(time)*5;
 
-  // Dessin Ripple
-  if (ripple.a > 0) {
-      ctx.strokeStyle = `rgba(0, 255, 255, ${ripple.a})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(ripple.x, ripple.y, ripple.r, 0, Math.PI*2); ctx.stroke();
-      ripple.r += 5; ripple.a -= 0.02;
-  }
+   if(isPressing && state === "IDLE") {
+       pressTimer += 0.016;
+       if(pressTimer > 0.4) {
+           state = "SPIN"; progress = 0; isPressing = false;
+       }
+   }
 
-  // Gestion appui long (Vers A-TOm)
-  if (isPressing) {
-      pressTimer += 0.016;
-      if (pressTimer > 0.4) {
-          const arc = Math.min(1, (pressTimer - 0.4) * 2);
-          ctx.strokeStyle = "#0FF"; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(0, 0, 55, -Math.PI/2, (-Math.PI/2) + (Math.PI*2*arc)); ctx.stroke();
-      }
-  }
+   if(state === "IDLE") {
+       ["N","Y","I"].forEach((l, i) => {
+           const a = (i*2.1) + time*0.2;
+           drawAtom(Math.cos(a)*180, Math.sin(a)*180 + floatY, l, 22, false);
+       });
+       drawAtom(0, floatY, "m", 38, true, 1, true);
 
-  const floatY = Math.sin(time) * 6;
+       atoms.forEach(a => {
+           a.ang += 0.005; if(a.d > a.targetD) a.d -= 3; if(a.a < 1) a.a += 0.02;
+           drawAtom(Math.cos(a.ang)*a.d, Math.sin(a.ang)*a.d + floatY, a.label, 18, false, a.a*0.6, true);
+       });
+   } else if(state === "SPIN") {
+       progress += 0.02; const rot = progress * 18.8;
+       ["A","-","T","O","m"].forEach((c, i) => drawAtom(Math.cos(rot + i*1.25)*180*(1-progress), Math.sin(rot + i*1.25)*180*(1-progress), c, 22, true));
+       if(progress >= 1) state = "ATOM_ALIGN";
+   } else if(state === "ATOM_ALIGN") {
+       yOffset = Math.min(1, yOffset + 0.05);
+       ctx.save(); ctx.translate(0, -yOffset*120);
+       ["A","-","T","O","m"].forEach((c, i) => drawAtom((i-2)*70, 0, c, 22, true));
+       ctx.restore();
+       if(yOffset > 0.9) drawAtom(0, 80, "CHAT", 40, true, 1, true);
+   }
 
-  // Électrons de base
-  baseElectrons.forEach((e, i) => {
-      const ang = e.angle + Math.sin(time * 0.4 + i) * 0.05;
-      drawAtom(Math.cos(ang)*e.dist, Math.sin(ang)*e.dist + floatY, e.label, 22, false);
-  });
-
-  // Électrons de suggestion (The Discovery Flux)
-  atoms.forEach((a, i) => {
-      a.angle += 0.005;
-      if(a.dist > a.targetDist) a.dist -= 2;
-      if(a.opacity < 1) a.opacity += 0.02;
-      drawAtom(Math.cos(a.angle)*a.dist, Math.sin(a.angle)*a.dist + floatY, a.label, 18, false, a.opacity * 0.6, true);
-  });
-
-  // Noyau
-  drawAtom(0, floatY, currentCore, 38, true, 1, true);
-
-  ctx.restore(); requestAnimationFrame(draw);
+   ctx.restore(); requestAnimationFrame(draw);
 }
 draw();
 </script>
