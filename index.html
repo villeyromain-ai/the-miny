@@ -1,145 +1,114 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<style>
-   :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
-   body, html { 
-       margin: 0; padding: 0; background: #000; overflow: hidden; 
-       height: 100dvh; width: 100vw; position: fixed;
-       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-   }
-   canvas { position: absolute; inset: 0; z-index: 1; touch-action: none; }
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <style>
+       :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
+       body, html { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100%; width: 100%; position: fixed; font-family: -apple-system, sans-serif; }
 
-   #ui {
-       position: absolute; inset: 0; z-index: 10;
-       display: flex; flex-direction: column;
-       padding: calc(var(--sat) + 15px) 25px calc(var(--sab) + 15px) 25px;
-       pointer-events: none; box-sizing: border-box;
-   }
+       /* Conteneur UI pour verrouiller l'espace */
+       #the-miny-app { 
+           position: absolute; inset: 0; display: flex; flex-direction: column; 
+           padding: calc(var(--sat) + 10px) 20px calc(var(--sab) + 10px) 20px;
+           box-sizing: border-box; z-index: 10; pointer-events: none;
+       }
 
-   #top-bar { flex: 0 0 50px; text-align: center; font-size: 10px; letter-spacing: 6px; color: #0FF; text-transform: uppercase; font-weight: 300; }
-   #main-zone { flex: 1; width: 100%; position: relative; }
-   #bottom-bar { flex: 0 0 120px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+       #header { flex: 0 0 40px; text-align: center; color: #0FF; font-size: 9px; letter-spacing: 5px; text-transform: uppercase; }
+       #core-space { flex: 1; width: 100%; position: relative; } /* C'est ICI que l'atome est ancré */
 
-   #pill { 
-       width: 100%; max-width: 360px; background: rgba(255,255,255,0.08); 
-       border-radius: 60px; backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.15);
-       pointer-events: auto; margin-bottom: 15px;
-   }
-   input { 
-       background: transparent; border: none; color: #fff; width: 100%; 
-       text-align: center; font-size: 16px; outline: none; padding: 18px 0; 
-       letter-spacing: 3px; text-transform: uppercase; font-weight: 200;
-   }
-   #loc { font-size: 8px; color: rgba(0,255,255,0.4); letter-spacing: 2px; height: 10px; }
+       #footer { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+       #input-pill { 
+           width: 100%; max-width: 400px; background: rgba(255,255,255,0.08); 
+           border-radius: 50px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
+           pointer-events: auto;
+       }
+       input { 
+           background: transparent; border: none; color: #fff; width: 100%; 
+           text-align: center; font-size: 16px; outline: none; padding: 16px 0; 
+           letter-spacing: 2px; text-transform: uppercase; font-weight: 200;
+       }
+       #coords { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 10px; letter-spacing: 2px; }
 
-   #overlay { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-   .btn { border: 1px solid #555; padding: 18px 40px; border-radius: 60px; font-size: 10px; color: #aaa; letter-spacing: 5px; }
-</style>
+       canvas { position: fixed; top: 0; left: 0; z-index: 1; }
+       #boot { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; color: #444; font-size: 10px; letter-spacing: 4px; cursor: pointer; }
+   </style>
 </head>
 <body>
 
-<div id="overlay" onclick="boot()">
-   <div class="btn">ACTIVER A-TOM</div>
-</div>
+<div id="boot" onclick="this.style.display='none'">INITIALISER A-TOM</div>
 
-<div id="ui">
-   <div id="top-bar"><div id="status">SYSTÈME EN ATTENTE</div></div>
-   <div id="main-zone"></div>
-   <div id="bottom-bar">
-       <div id="pill"><input type="text" id="flow" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
-       <div id="loc">NANTES : INITIALISATION</div>
+<div id="the-miny-app">
+   <div id="header" id="status">A-TOM : VEILLE</div>
+   <div id="core-space"></div>
+   <div id="footer">
+       <div id="input-pill"><input type="text" id="inp" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
+       <div id="coords">NANTES : SCAN...</div>
    </div>
 </div>
 
-<canvas id="canvas"></canvas>
+<canvas id="stage"></canvas>
 
 <script>
-const canvas = document.getElementById("canvas"), ctx = canvas.getContext("2d");
-const mainZone = document.getElementById("main-zone"), status = document.getElementById("status");
-const flow = document.getElementById("flow"), loc = document.getElementById("loc");
+const stage = document.getElementById('stage'), ctx = stage.getContext('2d');
+const coreSpace = document.getElementById('core-space'), inp = document.getElementById('inp');
+let w, h, ratio, atoms = [];
 
-let w, h, ratio, atoms = [], collisions = [];
-
-function boot() {
-   document.getElementById("overlay").style.display = "none";
-   status.innerText = "NOYAU STABILISÉ";
-   navigator.geolocation.getCurrentPosition(p => {
-       loc.innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
-   });
-}
-
-function sync() {
+function resize() {
    ratio = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
-   canvas.width = w * ratio; canvas.height = h * ratio;
+   stage.width = w * ratio; stage.height = h * ratio;
    ctx.scale(ratio, ratio);
 }
-window.addEventListener("resize", sync);
-window.addEventListener("orientationchange", sync);
-sync();
+window.addEventListener('resize', resize); resize();
 
-flow.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && flow.value) {
-       atoms.push({ l: flow.value, a: Math.random()*Math.PI*2, d: 200, td: 75, c: "#0FF" });
-       status.innerText = "CAPTATION DU FLUX";
-       flow.value = "";
-       setTimeout(() => {
-           collisions.push({ l: "RÉSONANCE", a: Math.random()*Math.PI*2, d: 300, td: 130, c: "#FFF" });
-           status.innerText = "RÉSONANCE DÉTECTÉE";
-       }, 900);
+// Système de capture de flux
+inp.addEventListener('keydown', (e) => {
+   if(e.key === 'Enter' && inp.value) {
+       atoms.push({ l: inp.value, a: Math.random()*7, d: 200, targetD: 80 });
+       inp.value = '';
    }
 });
 
-function render() {
+function draw() {
    ctx.clearRect(0, 0, w, h);
 
-   // CALCUL DU CENTRE GÉOMÉTRIQUE RÉEL DE LA ZONE LIBRE
-   const rect = mainZone.getBoundingClientRect();
+   // ANCRAGE ABSOLU : On récupère le centre de l'espace libre en temps réel
+   const rect = coreSpace.getBoundingClientRect();
    const cx = rect.left + rect.width / 2;
    const cy = rect.top + rect.height / 2;
 
    ctx.save();
    ctx.translate(cx, cy);
 
-   // NOYAU m
-   ctx.strokeStyle = "rgba(0,255,255,0.5)";
-   ctx.lineWidth = 1;
-   ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI*2); ctx.stroke();
+   // NOYAU CENTRAL (m)
+   ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+   ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.stroke();
+   ctx.fillStyle = '#FFF'; ctx.font = '200 18px Helvetica'; ctx.textAlign = 'center';
+   ctx.fillText('m', 0, 7);
 
-   ctx.fillStyle = "#fff";
-   ctx.font = "200 22px Helvetica";
-   ctx.textAlign = "center";
-   ctx.fillText("m", 0, 8);
+   // ÉLECTRONS D'INTÉRÊTS
+   atoms.forEach(at => {
+       at.a += 0.01;
+       at.d += (at.targetD - at.d) * 0.1;
+       const x = Math.cos(at.a) * at.d, y = Math.sin(at.a) * at.d;
 
-   // SYSTÈME ORBITAL
-   [atoms, collisions].forEach((group, idx) => {
-       group.forEach(at => {
-           at.a += (idx === 0 ? 0.007 : -0.004);
-           at.d += (at.td - at.d) * 0.12; // Attraction fluide
-
-           const x = Math.cos(at.a) * at.d;
-           const y = Math.sin(at.a) * at.d;
-
-           // Électron
-           ctx.strokeStyle = at.c;
-           ctx.globalAlpha = (idx === 0 ? 1 : 0.4);
-           ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI*2); ctx.stroke();
-
-           // Label
-           ctx.fillStyle = "#fff";
-           ctx.font = "300 9px Helvetica";
-           ctx.fillText(at.l.toUpperCase(), x, y + 26);
-       });
+       ctx.strokeStyle = '#0FF';
+       ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2); ctx.stroke();
+       ctx.fillStyle = '#FFF'; ctx.font = '8px Helvetica';
+       ctx.fillText(at.l.toUpperCase(), x, y + 25);
    });
 
    ctx.restore();
-   requestAnimationFrame(render);
+   requestAnimationFrame(draw);
 }
-render();
+draw();
+
+// Géo-fix Nantes
+navigator.geolocation.getCurrentPosition(p => {
+   document.getElementById('coords').innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
+});
 </script>
 </body>
 </html>
