@@ -5,151 +5,151 @@
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
    <meta name="apple-mobile-web-app-capable" content="yes">
    <style>
-       :root { --glace: #E0FFFF; --neon: #00FFFF; --deep: #000505; }
-       body, html { margin:0; padding:0; background: var(--deep); overflow:hidden; height:100dvh; width:100vw; position:fixed; font-family: 'Courier New', monospace; }
+       :root { --ice: #E0FFFF; --cyan: #00FFFF; --void: #000203; }
+       body, html { margin:0; padding:0; background: var(--void); overflow:hidden; height:100dvh; width:100vw; position:fixed; font-family: 'Helvetica Neue', sans-serif; }
 
        canvas { position: absolute; inset:0; z-index: 1; pointer-events: none; }
 
-       #proxy-ui {
+       #quantum-ui {
            position: absolute; inset: 0; z-index: 10; pointer-events: none;
-           display: flex; flex-direction: column;
-           padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 30px;
+           display: flex; flex-direction: column; justify-content: space-between;
+           padding: env(safe-area-inset-top) 30px env(safe-area-inset-bottom) 40px;
        }
 
-       #header-quantum { flex: 0 0 100px; display: flex; align-items: center; justify-content: center; color: var(--neon); font-size: 8px; letter-spacing: 8px; font-weight: 100; text-transform: uppercase; }
-       #main-void { flex: 1; }
-       #footer-flux { flex: 0 0 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; }
+       header { color: var(--cyan); font-size: 8px; letter-spacing: 12px; font-weight: 100; text-align: center; opacity: 0.5; text-shadow: 0 0 10px var(--cyan); }
 
-       .input-wrapper {
-           width: 100%; max-width: 450px; position: relative;
-           background: rgba(255,255,255,0.01); border-radius: 2px;
-           border-bottom: 1px solid rgba(0, 255, 255, 0.2);
-           pointer-events: auto;
+       .input-zone {
+           width: 100%; max-width: 500px; margin: 0 auto;
+           border-top: 0.5px solid rgba(0, 255, 255, 0.1);
+           pointer-events: auto; text-align: center;
        }
+
        input {
            background: transparent; border: none; color: #fff; width: 100%;
-           text-align: center; font-size: 14px; outline: none; padding: 15px 0;
-           letter-spacing: 5px; text-transform: uppercase; font-weight: 100;
+           text-align: center; font-size: 13px; outline: none; padding: 25px 0;
+           letter-spacing: 6px; text-transform: uppercase; font-weight: 200;
+           opacity: 0.7; transition: opacity 0.5s;
        }
-       #geo-sync { font-size: 6px; color: var(--neon); opacity: 0.4; letter-spacing: 3px; }
+       input:focus { opacity: 1; }
+       input::placeholder { color: var(--cyan); opacity: 0.3; }
 
-       /* Effet de scan glitché */
-       .scanline { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: rgba(0,255,255,0.03); z-index: 5; animation: scan 8s linear infinite; }
-       @keyframes scan { from { top: -10%; } to { top: 110%; } }
+       #coordinates { font-size: 6px; color: var(--cyan); opacity: 0.3; letter-spacing: 4px; position: absolute; bottom: 15px; width: 100%; text-align: center; left: 0; }
    </style>
 </head>
 <body>
 
-<div class="scanline"></div>
-<canvas id="quantum-core"></canvas>
+<canvas id="quantum-canvas"></canvas>
 
-<div id="proxy-ui">
-   <div id="header-quantum">CORE.A-TOM.STABLE</div>
-   <div id="main-void"></div>
-   <div id="footer-flux">
-       <div class="input-wrapper"><input type="text" id="flux-in" placeholder="INJECT.DATA" autocomplete="off"></div>
-       <div id="geo-sync">NANTES.GRID.SYNCING...</div>
+<div id="quantum-ui">
+   <header>A-TOM : SUPRA-CONSCIENCE</header>
+   <div class="input-zone">
+       <input type="text" id="stream" placeholder="RESONANCE DATA" autocomplete="off">
    </div>
+   <div id="coordinates">NANTES // GRID.SCAN.ACTIVE</div>
 </div>
 
 <script>
-const canvas = document.getElementById('quantum-core'), ctx = canvas.getContext('2d');
-const input = document.getElementById('flux-in'), geo = document.getElementById('geo-sync');
-let w, h, dpr, particles = [], waves = [];
+const canvas = document.getElementById('quantum-canvas'), ctx = canvas.getContext('2d');
+const input = document.getElementById('stream');
+let w, h, dpr, particles = [], shards = [];
 
-function setup() {
+function init() {
    dpr = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
    canvas.width = w * dpr; canvas.height = h * dpr;
    ctx.scale(dpr, dpr);
 }
-window.addEventListener('resize', setup); setup();
+window.addEventListener('resize', init); init();
 
 input.addEventListener('keydown', (e) => {
    if(e.key === 'Enter' && input.value) {
-       // Injection de particule avec "spin" quantique
+       // Ajout d'une entité quantique
        particles.push({
-           t: input.value.toUpperCase(),
-           orbit: 100 + Math.random() * 50,
+           label: input.value.toUpperCase(),
+           orbit: 120 + Math.random() * 60,
            angle: Math.random() * Math.PI * 2,
-           speed: (Math.random() - 0.5) * 0.02,
-           entropy: Math.random() * 100,
-           life: 1.0
+           speed: (Math.random() - 0.5) * 0.015,
+           jump: 0,
+           noiseOffset: Math.random() * 1000
        });
-       waves.push({ r: 0, a: 1.0 });
+       // Onde de choc céleste
+       shards.push({ r: 20, a: 1.0 });
        input.value = '';
    }
 });
 
-function drawQuantum() {
-   ctx.fillStyle = 'rgba(0, 5, 5, 0.15)'; // Persistance rétinienne (Motion Blur)
+function draw() {
+   // Effet de traînée quantique (nébuleuse)
+   ctx.fillStyle = 'rgba(0, 2, 3, 0.12)';
    ctx.fillRect(0, 0, w, h);
 
    const cx = w/2, cy = h/2;
 
-   // 1. LES ONDES DE CHOC (Dilation du vide)
-   waves.forEach((wve, i) => {
+   // 1. ONDES DE RÉSONANCE (Céleste)
+   shards.forEach((s, i) => {
        ctx.beginPath();
-       ctx.arc(cx, cy, wve.r, 0, Math.PI*2);
-       ctx.strokeStyle = `rgba(0, 255, 255, ${wve.a * 0.2})`;
+       ctx.arc(cx, cy, s.r, 0, Math.PI*2);
+       ctx.strokeStyle = `rgba(224, 255, 255, ${s.a * 0.4})`;
        ctx.lineWidth = 0.5;
        ctx.stroke();
-       wve.r += 6; wve.a -= 0.01;
-       if(wve.a <= 0) waves.splice(i, 1);
+       s.r += 5; s.a -= 0.012;
+       if(s.a <= 0) shards.splice(i, 1);
    });
 
    ctx.save();
    ctx.translate(cx, cy);
 
-   // 2. LE NOYAU "m" (Sceau de Fondation)
-   // On dessine le m non pas comme du texte, mais comme une résonance
-   ctx.shadowBlur = 15; ctx.shadowColor = "#0FF";
-   ctx.fillStyle = "#FFF"; ctx.font = "200 24px Helvetica"; ctx.textAlign="center";
-   ctx.fillText("m", Math.random()-0.5, 8 + (Math.random()-0.5)); // Micro-vibration
+   // 2. LA SINGULARITÉ "m" (Cœur de l'Atome)
+   // Aura glacée pulsante
+   const pulse = Math.sin(Date.now() * 0.002) * 5;
+   const gCore = ctx.createRadialGradient(0, 0, 0, 0, 0, 40 + pulse);
+   gCore.addColorStop(0, 'rgba(0, 255, 255, 0.2)');
+   gCore.addColorStop(1, 'rgba(0, 255, 255, 0)');
+   ctx.fillStyle = gCore;
+   ctx.beginPath(); ctx.arc(0, 0, 40 + pulse, 0, Math.PI*2); ctx.fill();
+
+   ctx.fillStyle = "#FFF"; ctx.font = "100 28px Helvetica Neue"; ctx.textAlign="center";
+   ctx.shadowBlur = 15; ctx.shadowColor = "cyan";
+   ctx.fillText("m", 0, 10);
    ctx.shadowBlur = 0;
 
-   // 3. NUAGES DE PROBABILITÉ (Électrons)
+   // 3. NUAGES D'ÉLECTRONS (Sauts Quantiques)
    particles.forEach(p => {
        p.angle += p.speed;
-       p.entropy += 0.1;
+       p.jump++;
 
-       // Calcul de la position avec incertitude
-       const noise = Math.sin(p.entropy) * 3;
-       const x = Math.cos(p.angle) * p.orbit + noise;
-       const y = Math.sin(p.angle) * p.orbit + noise;
+       // Simulation de l'incertitude de position
+       let x = Math.cos(p.angle) * p.orbit;
+       let y = Math.sin(p.angle) * p.orbit;
 
-       // Halo Glacé (L'aura)
-       const g = ctx.createRadialGradient(x, y, 0, x, y, 20);
-       g.addColorStop(0, 'rgba(224, 255, 255, 0.3)');
-       g.addColorStop(1, 'rgba(0, 255, 255, 0)');
-       ctx.fillStyle = g;
-       ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI*2); ctx.fill();
+       if (p.jump % 30 === 0) { // Saut quantique toutes les 30 frames
+           x += (Math.random() - 0.5) * 20;
+           y += (Math.random() - 0.5) * 20;
+       }
 
-       // Point de Singularité
+       // Halo individuel blanc-cyan glacé
+       const gPart = ctx.createRadialGradient(x, y, 0, x, y, 18);
+       gPart.addColorStop(0, 'rgba(224, 255, 255, 0.5)');
+       gPart.addColorStop(1, 'rgba(0, 255, 255, 0)');
+       ctx.fillStyle = gPart;
+       ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI*2); ctx.fill();
+
+       // Le Quark (Point central)
        ctx.fillStyle = "#FFF";
-       ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI*2); ctx.fill();
+       ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI*2); ctx.fill();
 
-       // Texte projeté (Sémantique)
-       ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-       ctx.font = "100 8px Courier New";
-       ctx.fillText(p.t, x, y + 25);
-
-       // Liaison Laser instable
-       ctx.beginPath();
-       ctx.strokeStyle = "rgba(0, 255, 255, 0.05)";
-       ctx.moveTo(0,0); ctx.lineTo(x,y); ctx.stroke();
+       // Label Céleste
+       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+       ctx.font = "200 9px Helvetica Neue";
+       ctx.letterSpacing = "3px";
+       ctx.fillText(p.label, x, y + 25);
    });
 
    ctx.restore();
-   requestAnimationFrame(drawQuantum);
+   requestAnimationFrame(draw);
 }
 
-// DATA FEED NANTES
-navigator.geolocation.watchPosition(pos => {
-   geo.innerText = `NANTES.LAT.${pos.coords.latitude.toFixed(4)}.LONG.${pos.coords.longitude.toFixed(4)}.SYNC`;
-});
-
-drawQuantum();
+draw();
 </script>
 </body>
 </html>
