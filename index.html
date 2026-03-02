@@ -10,70 +10,68 @@
   :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
   body, html { 
       margin: 0; padding: 0; background: #000; overflow: hidden; 
-      height: 100dvh; width: 100vw; position: fixed;
-      font-family: -apple-system, sans-serif; color: #fff;
+      height: 100%; width: 100%; position: fixed;
+      font-family: -apple-system, sans-serif;
   }
 
-  canvas { position: absolute; inset: 0; z-index: 1; }
-
-  #app-interface {
-      position: relative; z-index: 10;
-      height: 100dvh; width: 100vw;
+  /* On utilise un conteneur flex pour forcer le centre */
+  #master-layout {
       display: flex; flex-direction: column;
-      padding: calc(var(--sat) + 10px) 25px calc(var(--sab) + 10px) 25px;
-      box-sizing: border-box; pointer-events: none;
+      height: 100dvh; width: 100vw;
+      padding: var(--sat) 20px var(--sab) 20px;
+      box-sizing: border-box;
   }
 
-  #status-bar { flex: 0 0 30px; text-align: center; }
-  #atom-msg { font-size: 9px; letter-spacing: 5px; color: #0FF; text-transform: uppercase; font-weight: 200; }
+  canvas { position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
 
-  #viewport-center { flex: 1; display: flex; align-items: center; justify-content: center; }
+  #ui-top { flex: 0 0 40px; text-align: center; z-index: 10; padding-top: 10px; }
+  #voice-out { font-size: 8px; letter-spacing: 4px; color: #0FF; text-transform: uppercase; opacity: 0.8; }
 
-  #input-zone { flex: 0 0 80px; pointer-events: auto; display: flex; align-items: center; }
-  #pill-container { 
-      background: rgba(255,255,255,0.06); border-radius: 50px; 
-      backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.1); width: 100%;
+  /* C'est ici que le noyau DOIT vivre */
+  #core-anchor { flex: 1; pointer-events: none; } 
+
+  #ui-bottom { flex: 0 0 100px; z-index: 10; display: flex; align-items: center; justify-content: center; }
+  #input-box { 
+      background: rgba(255,255,255,0.06); border-radius: 40px; 
+      backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); 
+      width: 100%; max-width: 400px; pointer-events: auto;
   }
   input { 
       background: transparent; border: none; color: #fff; width: 100%; 
-      text-align: center; font-size: 14px; outline: none; padding: 15px 0; 
-      letter-spacing: 3px; font-weight: 200; text-transform: uppercase; 
+      text-align: center; font-size: 14px; outline: none; padding: 16px 0; 
+      letter-spacing: 2px; text-transform: uppercase; font-weight: 200;
   }
 
-  #gate { 
-      position: fixed; inset: 0; z-index: 100; background: #000; 
-      display: flex; align-items: center; justify-content: center;
-  }
-  .start-btn { border: 1px solid #333; padding: 12px 25px; border-radius: 40px; font-size: 8px; letter-spacing: 4px; color: #666; }
+  #splash { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .btn { border: 1px solid #444; padding: 12px 25px; border-radius: 40px; font-size: 8px; letter-spacing: 3px; color: #888; }
 </style>
 </head>
 <body>
 
-<div id="gate" onclick="init()">
-   <div class="start-btn">ALIGNER LE CENTRE</div>
+<div id="splash" onclick="boot()">
+   <div class="btn">VERROUILLER LE NOYAU</div>
 </div>
 
-<div id="app-interface">
-   <div id="status-bar"><div id="atom-msg">INITIALISATION</div></div>
-   <div id="viewport-center">
-       </div>
-   <div id="input-zone">
-       <div id="pill-container"><input type="text" id="flow-in" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
+<div id="master-layout">
+   <div id="ui-top"><div id="voice-out">...</div></div>
+   <div id="core-anchor"></div>
+   <div id="ui-bottom">
+       <div id="input-box"><input type="text" id="flow" placeholder="AJOUTER UN FLUX" autocomplete="off"></div>
    </div>
 </div>
 
-<canvas id="world"></canvas>
+<canvas id="sky"></canvas>
 
 <script>
-const world = document.getElementById("world"), ctx = world.getContext("2d");
-const msg = document.getElementById("atom-msg"), flowIn = document.getElementById("flow-in");
-const centerZone = document.getElementById("viewport-center");
+const sky = document.getElementById("sky"), ctx = sky.getContext("2d");
+const anchor = document.getElementById("core-anchor");
+const voice = document.getElementById("voice-out"), flow = document.getElementById("flow");
 
-let w, h, ratio, cSize, atoms = [], collisions = [], loc = "NANTES : SCAN...";
+let w, h, ratio, atoms = [], collisions = [], loc = "NANTES : SCAN...";
 
-function init() {
-   document.getElementById("gate").style.display = "none";
-   msg.innerText = "A-TOm : CENTRE VERROUILLÉ";
+function boot() {
+   document.getElementById("splash").style.display = "none";
+   voice.innerText = "NOYAU CENTRALISÉ";
    navigator.geolocation.getCurrentPosition(p => {
        loc = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
    });
@@ -82,61 +80,57 @@ function init() {
 function resize() {
    ratio = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
-   world.width = w * ratio; world.height = h * ratio;
+   sky.width = w * ratio; sky.height = h * ratio;
    ctx.scale(ratio, ratio);
-   cSize = Math.min(w, h) * 0.14;
 }
 window.addEventListener("resize", resize); resize();
 
-flowIn.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && flowIn.value) {
-       atoms.push({ l: flowIn.value, a: Math.random()*6, d: 300, td: 90, c: "#0FF" });
-       msg.innerText = "FLUX CAPTÉ";
-       flowIn.value = "";
+flow.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && flow.value) {
+       atoms.push({ l: flow.value, a: Math.random()*6, d: 200, td: 80, c: "#0FF" });
+       voice.innerText = "FLUX CAPTÉ";
+       flow.value = "";
        setTimeout(() => {
-           collisions.push({ l: "PROXIMITÉ", a: Math.random()*6, d: 400, td: 160, c: "#FFF", txt: "RÉSONANCE" });
-           msg.innerText = "COLLISION DÉTECTÉE";
-       }, 1200);
+           collisions.push({ l: "COLLISION", a: Math.random()*6, d: 300, td: 150, c: "#FFF", m: "RÉSONANCE" });
+           voice.innerText = "COLLISION DÉTECTÉE";
+       }, 1000);
    }
 });
 
 function draw() {
    ctx.clearRect(0, 0, w, h);
 
-   // CALCUL DU CENTRE RÉEL BASÉ SUR LA DIV VIEWPORT-CENTER
-   const rect = centerZone.getBoundingClientRect();
-   const cx = rect.left + rect.width / 2;
-   const cy = rect.top + rect.height / 2;
+   // CALCUL DU CENTRE BASÉ SUR L'ANCRE HTML
+   const box = anchor.getBoundingClientRect();
+   const cx = box.left + box.width / 2;
+   const cy = box.top + box.height / 2;
 
    ctx.save(); ctx.translate(cx, cy);
    const time = Date.now() * 0.002;
 
    // NOYAU
    ctx.strokeStyle = "rgba(0,255,255,0.3)";
-   ctx.beginPath(); ctx.arc(0, 0, cSize/2, 0, Math.PI*2); ctx.stroke();
-   ctx.fillStyle = "#fff"; ctx.font = "100 18px Helvetica"; ctx.textAlign="center";
-   ctx.fillText("m", 0, 7);
+   ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI*2); ctx.stroke();
+   ctx.fillStyle = "#fff"; ctx.font = "100 16px Helvetica"; ctx.textAlign="center";
+   ctx.fillText("m", 0, 6);
 
-   // ÉLÉMENTS
-   [atoms, collisions].forEach((g, idx) => {
-       g.forEach(at => {
-           at.a += (idx === 0 ? 0.005 : -0.002);
-           at.d += (at.td - at.d) * 0.05;
+   // SYSTÈME
+   [atoms, collisions].forEach((group, idx) => {
+       group.forEach(at => {
+           at.a += (idx === 0 ? 0.006 : -0.003);
+           at.d += (at.td - at.d) * 0.06;
            const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
            ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.4);
            ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI*2); ctx.stroke();
            ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
            ctx.fillText(at.l.toUpperCase(), x, y + 24);
-           if(idx === 1 && at.d < 180) {
-               ctx.fillStyle = "#0FF"; ctx.fillText(at.txt, x, y - 18);
-           }
        });
    });
    ctx.restore();
 
-   // LOCALISATION
-   ctx.globalAlpha = 0.15; ctx.fillStyle = "#fff"; ctx.font = "7px Helvetica"; ctx.textAlign="center";
-   ctx.fillText(loc, w/2, rect.bottom + 20);
+   // LOC (AU DESSUS DU BOUTON)
+   ctx.globalAlpha = 0.2; ctx.fillStyle = "#fff"; ctx.font = "7px Helvetica"; ctx.textAlign="center";
+   ctx.fillText(loc, w/2, box.bottom - 10);
 
    requestAnimationFrame(draw);
 }
