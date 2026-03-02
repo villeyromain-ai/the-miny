@@ -5,77 +5,93 @@
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
    <style>
        :root { --ice: #E0FFFF; --cyan: #00FFFF; --void: #000000; }
-       body, html { margin:0; padding:0; background: var(--void); overflow:hidden; height:100dvh; width:100vw; position:fixed; }
+       body, html { margin:0; padding:0; background: var(--void); overflow:hidden; height:100dvh; width:100vw; position:fixed; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica; }
        canvas { position: absolute; inset:0; z-index: 1; touch-action: none; }
-       #ui { position: absolute; inset:0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
-       input { pointer-events: auto; background: transparent; border: none; color: #fff; width: 100%; text-align: center; font-size: 12px; outline: none; letter-spacing: 5px; text-transform: uppercase; font-weight: 100; padding: 20px 0; }
-       .loc { color: var(--cyan); font-size: 7px; text-align: center; opacity: 0.4; letter-spacing: 3px; margin-bottom: 10px; }
+       #interface { position: absolute; inset:0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: env(safe-area-inset-top) 25px env(safe-area-inset-bottom) 25px; }
+       .status-bar { font-size: 9px; letter-spacing: 4px; color: var(--cyan); text-align: center; opacity: 0.6; text-transform: uppercase; padding-top: 20px; }
+       .input-container { pointer-events: auto; width: 100%; max-width: 400px; margin: 0 auto; margin-bottom: 20px; }
+       input { background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,255,0.1); border-radius: 40px; color: #fff; width: 100%; text-align: center; font-size: 14px; outline: none; padding: 18px 0; letter-spacing: 2px; font-weight: 200; backdrop-filter: blur(10px); }
+       .geo-data { font-size: 7px; color: var(--cyan); text-align: center; opacity: 0.4; letter-spacing: 2px; margin-top: 10px; }
    </style>
 </head>
 <body>
 
-<canvas id="stage"></canvas>
-<div id="ui">
-   <div style="height:50px"></div>
-   <div>
-       <div class="loc" id="nantes">SCANNING...</div>
-       <input type="text" id="flux" placeholder="INJECTER RÉSONANCE" autocomplete="off">
+<canvas id="quantum-core"></canvas>
+<div id="interface">
+   <div class="status-bar" id="header-status">A-TOM : VEILLE ACTIVE</div>
+   <div class="input-container">
+       <input type="text" id="resonance-input" placeholder="AJOUTER UN FLUX" autocomplete="off">
+       <div class="geo-data" id="geo-display">LOCALISATION EN COURS...</div>
    </div>
 </div>
 
 <script>
-const canvas = document.getElementById('stage'), ctx = canvas.getContext('2d');
+const canvas = document.getElementById('quantum-core'), ctx = canvas.getContext('2d');
+const input = document.getElementById('resonance-input');
+const header = document.getElementById('header-status');
+const geoDisplay = document.getElementById('geo-display');
+
 let w, h, dpr, electrons = [], pulses = [], rotation = 0, isDragging = false, lastX = 0;
 
-// --- MODULE 1: NUCLEUS & SYNC ---
-function sync() {
+// --- MODULE : INITIALISATION RÉELLE ---
+function init() {
    dpr = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
    canvas.width = w * dpr; canvas.height = h * dpr;
    ctx.scale(dpr, dpr);
 }
-window.addEventListener('resize', sync); sync();
+window.addEventListener('resize', init); init();
 
-// --- MODULE 2: KINETICS (Touch-to-Spin) ---
-canvas.addEventListener('pointerdown', e => { isDragging = true; lastX = e.clientX; });
+// --- MODULE : GEOLOCALISATION RÉELLE ---
+if ("geolocation" in navigator) {
+   navigator.geolocation.watchPosition(pos => {
+       geoDisplay.innerText = `NANTES : ${pos.coords.latitude.toFixed(4)} / ${pos.coords.longitude.toFixed(4)}`;
+   }, err => { geoDisplay.innerText = "ACCÈS GÉO REQUIS"; }, { enableHighAccuracy: true });
+}
+
+// --- MODULE : RÉSONANCE HAPTIQUE & INTERACTION ---
+function triggerHaptic(duration = 10) {
+   if ("vibrate" in navigator) navigator.vibrate(duration);
+}
+
+canvas.addEventListener('pointerdown', e => { isDragging = true; lastX = e.clientX; triggerHaptic(5); });
 window.addEventListener('pointermove', e => {
    if (isDragging) {
-       let delta = e.clientX - lastX;
-       rotation += delta * 0.01; // Le spin est possible que par le toucher
+       rotation += (e.clientX - lastX) * 0.005;
        lastX = e.clientX;
    }
 });
 window.addEventListener('pointerup', () => isDragging = false);
 
-// --- MODULE 3: SEMANTIC (Electron Integration) ---
-document.getElementById('flux').addEventListener('keydown', e => {
-   if(e.key === 'Enter' && e.target.value) {
+// --- MODULE : INTÉGRATION SÉMANTIQUE ---
+input.addEventListener('keydown', e => {
+   if(e.key === 'Enter' && input.value) {
+       triggerHaptic([15, 30, 15]); // Séquence de résonance
        electrons.push({
-           label: e.target.value.toUpperCase(),
+           label: input.value.toUpperCase(),
            angle: Math.random() * Math.PI * 2 - rotation,
            dist: 85, // Atome resserré
-           pulseState: 0
+           opacity: 0
        });
-       // Lancement pulsations et halo cyan glacé
-       pulses.push({ r: 40, a: 1.0 }); 
-       e.target.value = '';
+       pulses.push({ r: 50, a: 1.0 });
+       header.innerText = "RÉSONANCE INTÉGRÉE";
+       setTimeout(() => { header.innerText = "A-TOM : VEILLE ACTIVE"; }, 2000);
+       input.value = '';
    }
 });
 
-// --- MODULE 4: PHOTONIC ENGINE ---
+// --- MODULE : RENDU QUANTIQUE ---
 function render() {
-   ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Persistance quantique
+   ctx.fillStyle = 'rgba(0, 0, 0, 0.18)'; // Persistance
    ctx.fillRect(0, 0, w, h);
    const cx = w/2, cy = h/2;
 
-   // Pulsations de connexion
+   // Ondes de choc
    pulses.forEach((p, i) => {
-       ctx.beginPath();
-       ctx.arc(cx, cy, p.r, 0, Math.PI*2);
+       ctx.beginPath(); ctx.arc(cx, cy, p.r, 0, Math.PI*2);
        ctx.strokeStyle = `rgba(0, 255, 255, ${p.a})`;
-       ctx.lineWidth = 0.5;
-       ctx.stroke();
-       p.r += 6; p.a -= 0.02;
+       ctx.lineWidth = 0.5; ctx.stroke();
+       p.r += 7; p.a -= 0.02;
        if(p.a <= 0) pulses.splice(i, 1);
    });
 
@@ -83,42 +99,38 @@ function render() {
    ctx.translate(cx, cy);
    ctx.rotate(rotation);
 
-   // Noyau 'm'
+   // Noyau 'm' flottant
    ctx.shadowBlur = 15; ctx.shadowColor = "cyan";
-   ctx.fillStyle = "#fff"; ctx.font = "200 24px Helvetica"; ctx.textAlign="center";
-   ctx.fillText("m", 0, 8);
+   ctx.fillStyle = "#fff"; ctx.font = "200 28px Helvetica Neue"; ctx.textAlign="center";
+   ctx.fillText("m", 0, 10 + Math.sin(Date.now()*0.002)*3);
    ctx.shadowBlur = 0;
 
-   // Électrons (Boussoles célestes)
+   // Électrons / Boussoles
    electrons.forEach(el => {
+       if(el.opacity < 1) el.opacity += 0.02;
        const x = Math.cos(el.angle) * el.dist;
        const y = Math.sin(el.angle) * el.dist;
 
-       // Halo blanc cyan glacé constant
-       const grad = ctx.createRadialGradient(x, y, 0, x, y, 15);
-       grad.addColorStop(0, 'rgba(224, 255, 255, 0.4)');
-       grad.addColorStop(1, 'rgba(0, 255, 255, 0)');
-       ctx.fillStyle = grad;
-       ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI*2); ctx.fill();
+       // Halo Glacé
+       const g = ctx.createRadialGradient(x, y, 0, x, y, 18);
+       g.addColorStop(0, `rgba(224, 255, 255, ${el.opacity * 0.4})`);
+       g.addColorStop(1, 'rgba(0, 255, 255, 0)');
+       ctx.fillStyle = g;
+       ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI*2); ctx.fill();
 
-       // Point de matière
-       ctx.fillStyle = "#fff";
+       // Quark
+       ctx.fillStyle = `rgba(255, 255, 255, ${el.opacity})`;
        ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI*2); ctx.fill();
 
-       // Label
-       ctx.fillStyle = "rgba(255,255,255,0.5)";
-       ctx.font = "100 8px Helvetica";
-       ctx.fillText(el.label, x, y + 20);
+       // Label Sémantique
+       ctx.font = "100 9px Helvetica Neue";
+       ctx.fillStyle = `rgba(0, 255, 255, ${el.opacity * 0.6})`;
+       ctx.fillText(el.label, x, y + 25);
    });
 
    ctx.restore();
    requestAnimationFrame(render);
 }
-
-navigator.geolocation.watchPosition(p => {
-   document.getElementById('nantes').innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
-});
-
 render();
 </script>
 </body>
