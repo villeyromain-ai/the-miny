@@ -1,0 +1,54 @@
+cat <<EOF > index.html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+   <title>the miny - v17.5 PROD</title>
+   <style>
+       body { margin: 0; background: #000; color: #fff; font-family: -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
+       #sceau { width: 100px; height: 100px; position: relative; margin-bottom: 50px; cursor: pointer; transition: transform 0.8s ease-in-out; }
+       .electron { width: 3px; height: 3px; background: #fff; position: absolute; }
+       #e1 { top: 0; left: 50%; }
+       #e2 { bottom: 0; left: 0; }
+       #e3 { bottom: 0; right: 0; }
+       #input-flux { background: transparent; border: none; border-bottom: 1px solid #222; color: #fff; text-align: center; font-size: 1rem; outline: none; width: 60%; letter-spacing: 3px; }
+       #input-flux:focus { border-bottom: 1px solid #fff; }
+       #status { margin-top: 20px; font-size: 0.6rem; letter-spacing: 2px; color: #444; text-transform: uppercase; text-align: center; line-height: 1.5; }
+   </style>
+</head>
+<body>
+   <div id="sceau" onclick="activerRadar()">
+       <div class="electron" id="e1"></div>
+       <div class="electron" id="e2"></div>
+       <div class="electron" id="e3"></div>
+   </div>
+   <input type="text" id="input-flux" placeholder="INTERET" onkeydown="if(event.key==='Enter') activerRadar()">
+   <div id="status">Système Passif<br>Prêt pour Ancrage</div>
+
+   <script>
+       function activerRadar() {
+           const val = document.getElementById('input-flux').value;
+           if(!val) return;
+
+           document.getElementById('sceau').style.transform = 'rotate(720deg)';
+           document.getElementById('status').innerText = 'Localisation du Flux...';
+
+           if ("geolocation" in navigator) {
+               navigator.geolocation.getCurrentPosition(function(position) {
+                   const lat = position.coords.latitude;
+                   const lon = position.coords.longitude;
+                   document.getElementById('status').innerHTML = 'RÉSONANCE ACTIVE<br>Nantes : ' + lat.toFixed(3) + ' / ' + lon.toFixed(3);
+                   setTimeout(() => {
+                       alert('Flux "' + val + '" ancré à votre position.\nLa déferlante commence.');
+                   }, 500);
+               }, function(error) {
+                   alert("Erreur d'ancrage : Veuillez autoriser la localisation.");
+                   document.getElementById('status').innerText = 'Système Passif';
+               });
+           }
+       }
+   </script>
+</body>
+</html>
+EOF
