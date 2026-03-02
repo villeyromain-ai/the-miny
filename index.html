@@ -14,22 +14,22 @@
   }
   canvas { position: absolute; inset: 0; z-index: 1; touch-action: none; }
 
-  #frame {
+  #ui-wrapper {
       position: absolute; inset: 0; z-index: 10;
       display: flex; flex-direction: column;
       padding: calc(var(--sat) + 10px) 20px calc(var(--sab) + 10px) 20px;
       pointer-events: none; box-sizing: border-box;
   }
 
-  #status-top { flex: 0 0 40px; text-align: center; font-size: 9px; letter-spacing: 5px; color: #0FF; text-transform: uppercase; }
+  #header { flex: 0 0 40px; text-align: center; font-size: 9px; letter-spacing: 5px; color: #0FF; text-transform: uppercase; }
 
-  /* Zone invisible qui définit mathématiquement le centre */
-  #gravity-anchor { flex: 1; width: 100%; }
+  /* Zone morte centrale : rien ne peut la déplacer */
+  #anchor { flex: 1; width: 100%; }
 
-  #input-area { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  #pill-box { 
+  #footer { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #pill { 
       width: 100%; max-width: 340px; background: rgba(255,255,255,0.07); 
-      border-radius: 50px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50px; backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.1);
       pointer-events: auto;
   }
   input { 
@@ -37,69 +37,69 @@
       text-align: center; font-size: 15px; outline: none; padding: 16px 0; 
       letter-spacing: 2px; text-transform: uppercase; font-weight: 200;
   }
-  #coord-tag { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 10px; letter-spacing: 2px; }
+  #nantes-tag { font-size: 7px; color: rgba(0,255,255,0.3); margin-top: 12px; letter-spacing: 2px; }
 
-  #launch { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-  .btn { border: 1px solid #333; padding: 12px 25px; border-radius: 40px; font-size: 8px; color: #666; letter-spacing: 4px; }
+  #shield { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .boot-btn { border: 1px solid #444; padding: 15px 30px; border-radius: 50px; font-size: 9px; color: #888; letter-spacing: 4px; }
 </style>
 </head>
 <body>
 
-<div id="launch" onclick="boot()">
-   <div class="btn">RÉTABLIR LE NOYAU</div>
+<div id="shield" onclick="start()">
+   <div class="boot-btn">STABILISER L'HORIZON</div>
 </div>
 
-<div id="frame">
-   <div id="status-top"><div id="v-msg">STABILISATION...</div></div>
-   <div id="gravity-anchor"></div>
-   <div id="input-area">
-       <div id="pill-box"><input type="text" id="flow-in" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
-       <div id="coord-tag">NANTES : SCAN...</div>
+<div id="ui-wrapper">
+   <div id="header"><div id="msg">INITIALISATION...</div></div>
+   <div id="anchor"></div>
+   <div id="footer">
+       <div id="pill"><input type="text" id="inp" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
+       <div id="nantes-tag">NANTES : SCAN...</div>
    </div>
 </div>
 
-<canvas id="view"></canvas>
+<canvas id="stage"></canvas>
 
 <script>
-const view = document.getElementById("view"), ctx = view.getContext("2d");
-const anchor = document.getElementById("gravity-anchor"), vMsg = document.getElementById("v-msg");
-const flowIn = document.getElementById("flow-in"), coord = document.getElementById("coord-tag");
+const stage = document.getElementById("stage"), ctx = stage.getContext("2d");
+const anchor = document.getElementById("anchor"), msg = document.getElementById("msg");
+const inp = document.getElementById("inp"), tag = document.getElementById("nantes-tag");
 
 let w, h, ratio, atoms = [], collisions = [];
 
-function boot() {
-   document.getElementById("launch").style.display = "none";
-   vMsg.innerText = "NOYAU RE-FIXÉ";
+function start() {
+   document.getElementById("shield").style.display = "none";
+   msg.innerText = "NOYAU VERROUILLÉ";
    navigator.geolocation.getCurrentPosition(p => {
-       coord.innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
+       tag.innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
    });
 }
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
-   view.width = w * ratio; view.height = h * ratio;
+   stage.width = w * ratio; stage.height = h * ratio;
    ctx.scale(ratio, ratio);
 }
 window.addEventListener("resize", resize); resize();
 
-flowIn.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && flowIn.value) {
-       // Rayon réduit à 70px pour rester bien au centre sur mobile
-       atoms.push({ l: flowIn.value, a: Math.random()*6, d: 200, td: 70, c: "#0FF" });
-       vMsg.innerText = "FLUX CAPTÉ";
-       flowIn.value = "";
+inp.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && inp.value) {
+       // Confinement strict des orbites (max 120px)
+       atoms.push({ l: inp.value, a: Math.random()*6, d: 200, td: 65, c: "#0FF" });
+       msg.innerText = "FLUX CAPTÉ";
+       inp.value = "";
        setTimeout(() => {
-           collisions.push({ l: "COLLISION", a: Math.random()*6, d: 300, td: 130, c: "#FFF" });
-           vMsg.innerText = "RÉSONANCE DÉTECTÉE";
-       }, 1000);
+           collisions.push({ l: "COLLISION", a: Math.random()*6, d: 280, td: 115, c: "#FFF" });
+           msg.innerText = "RÉSONANCE ACTIVE";
+       }, 800);
    }
 });
 
 function draw() {
    ctx.clearRect(0, 0, w, h);
 
-   // RECALCUL DU CENTRE PHYSIQUE RÉEL (Anti-dérive Safari)
+   // RECALCUL DU CENTRE PHYSIQUE À CHAQUE FRAME
    const r = anchor.getBoundingClientRect();
    const cx = r.left + r.width / 2;
    const cy = r.top + r.height / 2;
@@ -113,20 +113,19 @@ function draw() {
    ctx.fillStyle = "#fff"; ctx.font = "100 18px Helvetica"; ctx.textAlign="center";
    ctx.fillText("m", 0, 7);
 
-   // ORBITES
-   [atoms, collisions].forEach((g, i) => {
-       g.forEach(at => {
-           at.a += (i === 0 ? 0.008 : -0.004);
+   // ÉLECTRONS
+   [atoms, collisions].forEach((group, idx) => {
+       group.forEach(at => {
+           at.a += (idx === 0 ? 0.009 : -0.005);
            at.d += (at.td - at.d) * 0.1;
            const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
-           ctx.strokeStyle = at.c; ctx.globalAlpha = (i === 0 ? 1 : 0.4);
+           ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.4);
            ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2); ctx.stroke();
            ctx.fillStyle = "#fff"; ctx.font = "8px Helvetica";
            ctx.fillText(at.l.toUpperCase(), x, y + 24);
        });
    });
    ctx.restore();
-
    requestAnimationFrame(draw);
 }
 draw();
