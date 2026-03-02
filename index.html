@@ -4,71 +4,59 @@
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
    <style>
-       body { margin:0; background:#000; overflow:hidden; font-family: 'Helvetica Neue', sans-serif; }
-       canvas { display:block; touch-action:none; }
-       #ui { position:fixed; bottom:50px; width:100%; text-align:center; opacity:0; transition:0.5s; }
-       input { background:transparent; border:none; border-bottom:0.5px solid cyan; color:#fff; text-align:center; letter-spacing:5px; outline:none; width:220px; text-transform:uppercase; font-weight:100; font-size:11px; padding:10px; }
+       body { margin: 0; background: #000; overflow: hidden; }
+       canvas { display: block; touch-action: none; }
+       #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
    </style>
 </head>
 <body>
-<canvas id="piano"></canvas>
-<div id="ui"><input type="text" id="i" placeholder="RÉSONANCE"></div>
-
+<canvas id="screen"></canvas>
 <script>
-/**
-* LE PIANO - CARROSSERIE 18.4 (STRICTO SENSU)
-* Ce module est aveugle : il ne sait pas comment la bombe fonctionne.
-*/
-const canvas = document.getElementById('piano');
-const ctx = canvas.getContext('2d');
-let w, h, step = 0, active = false, rotation = 0;
+   const canvas = document.getElementById('screen');
+   const ctx = canvas.getContext('2d', { alpha: false }); // Optimisation maximale
+   let w, h, step = 0;
 
-function resize() {
-   canvas.width = window.innerWidth * window.devicePixelRatio;
-   canvas.height = window.innerHeight * window.devicePixelRatio;
-   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-   w = window.innerWidth; h = window.innerHeight;
-}
-window.onresize = resize; resize();
+   function resize() {
+       w = canvas.width = window.innerWidth;
+       h = canvas.height = window.innerHeight;
+   }
+   window.onresize = resize; resize();
 
-function draw() {
-   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
-   const cx = w/2, cy = h/2;
+   // LE PIANO : Il ne fait que dessiner ce qu'on lui dicte
+   function render() {
+       ctx.fillStyle = '#000';
+       ctx.fillRect(0, 0, w, h);
 
-   if (!active) {
-       // --- ANIMATION DE DÉMARRAGE 18.4 ---
-       step += 0.02;
-       ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = 1.2;
-       [{x:0, y:-50}, {x:-43, y:25}, {x:43, y:25}].forEach(p => {
-           ctx.beginPath(); ctx.moveTo(cx, cy);
-           ctx.lineTo(cx + p.x * Math.min(1, step), cy + p.y * Math.min(1, step));
+       const cx = w / 2;
+       const cy = h / 2;
+
+       // SEQUENCE 18.4 : GÉNÉRÉE PAR IMPULSION GÉOMÉTRIQUE
+       step += 0.015;
+       ctx.strokeStyle = '#00FFFF';
+       ctx.lineWidth = 1.5;
+
+       // On dessine les 3 vecteurs de force de la fondation
+       const lines = [[0, -70], [-60, 40], [60, 40]];
+       lines.forEach(p => {
+           ctx.beginPath();
+           ctx.moveTo(cx, cy);
+           ctx.lineTo(cx + p[0] * Math.min(1, step), cy + p[1] * Math.min(1, step));
            ctx.stroke();
        });
-       if(step > 2) { active = true; document.getElementById('ui').style.opacity = 1; }
-   } else {
-       // --- LE NOYAU m ALIMENTÉ À DISTANCE ---
-       ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
-       ctx.shadowBlur = 15; ctx.shadowColor = 'cyan'; ctx.fillStyle = '#fff';
-       ctx.font = '200 30px Helvetica Neue'; ctx.textAlign = 'center';
-       ctx.fillText('m', 0, 10 + Math.sin(Date.now()*0.003)*3);
-       ctx.restore();
-       rotation += 0.002; // Une rotation de veille très légère
+
+       // Apparition du noyau m (Standard the miny)
+       if (step > 1.2) {
+           ctx.fillStyle = '#FFF';
+           ctx.font = '200 35px Helvetica Neue';
+           ctx.textAlign = 'center';
+           ctx.fillText('m', cx, cy + 12 + Math.sin(Date.now() * 0.003) * 4);
+       }
+
+       requestAnimationFrame(render);
    }
-   requestAnimationFrame(draw);
-}
 
-// LANCEMENT DU PIANO SEUL
-draw();
-
-/**
-* APPEL AU CHÂSSIS DÉPORTÉ (Simulé ici par une promesse)
-* Le "Moteur" est ailleurs, il injecte de l'énergie quand il est prêt.
-*/
-console.log("A-TOM : RECHERCHE DU RÉACTEUR...");
-setTimeout(() => {
-   console.log("CHASSIS 19.5 DÉTECTÉ. ÉNERGIE DISPONIBLE.");
-   // Ici, le châssis pourrait injecter les électrons i
-}, 3000);
+   // Le Châssis 19.5 alimente ce rendu depuis le "vide"
+   render();
 </script>
 </body>
 </html>
