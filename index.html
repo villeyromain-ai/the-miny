@@ -4,97 +4,95 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>the miny</title>
 <style>
-  :root { 
-      --sat: env(safe-area-inset-top); 
-      --sab: env(safe-area-inset-bottom); 
-  }
+  :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); }
   body, html { 
       margin: 0; padding: 0; background: #000; overflow: hidden; 
       height: 100dvh; width: 100vw; position: fixed;
       font-family: -apple-system, sans-serif;
   }
+  canvas { position: absolute; inset: 0; z-index: 1; touch-action: none; }
 
-  canvas { position: absolute; inset: 0; z-index: 1; }
-
-  /* Structure Rigide Anti-Dérive */
-  #app-frame {
-      position: absolute; inset: 0;
+  #ui-layer {
+      position: absolute; inset: 0; z-index: 10;
       display: flex; flex-direction: column;
-      padding: var(--sat) 20px var(--sab) 20px;
-      z-index: 10; pointer-events: none;
-      box-sizing: border-box;
+      padding: calc(var(--sat) + 10px) 20px calc(var(--sab) + 10px) 20px;
+      pointer-events: none; box-sizing: border-box;
   }
 
-  #header { flex: 0 0 50px; display: flex; align-items: center; justify-content: center; }
-  #voice { font-size: 10px; letter-spacing: 4px; color: #0FF; text-transform: uppercase; font-weight: 200; }
+  #header { flex: 0 0 40px; text-align: center; }
+  #v-msg { font-size: 9px; letter-spacing: 5px; color: #0FF; text-transform: uppercase; }
 
-  /* Le point mort central : rien ne peut le déplacer */
-  #anchor-point { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; }
+  /* Zone de capture du centre */
+  #anchor { flex: 1; width: 100%; }
 
   #footer { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   #pill { 
-      width: 100%; max-width: 320px; background: rgba(255,255,255,0.08); 
-      border-radius: 50px; backdrop-filter: blur(25px); 
-      border: 1px solid rgba(255,255,255,0.1); pointer-events: auto;
+      width: 100%; max-width: 340px; background: rgba(255,255,255,0.07); 
+      border-radius: 50px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);
+      pointer-events: auto;
   }
   input { 
       background: transparent; border: none; color: #fff; width: 100%; 
-      text-align: center; font-size: 14px; outline: none; padding: 16px 0; 
-      letter-spacing: 2px; text-transform: uppercase;
+      text-align: center; font-size: 15px; outline: none; padding: 16px 0; 
+      letter-spacing: 2px; text-transform: uppercase; font-weight: 200;
   }
+  #loc { font-size: 7px; color: rgba(255,255,255,0.2); margin-top: 10px; }
 
-  #shield { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-  .btn-boot { border: 1px solid #444; padding: 15px 30px; border-radius: 50px; font-size: 9px; letter-spacing: 4px; color: #999; }
+  #boot { position: fixed; inset: 0; z-index: 100; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .btn { border: 1px solid #333; padding: 12px 25px; border-radius: 40px; font-size: 8px; color: #666; letter-spacing: 4px; }
 </style>
 </head>
 <body>
 
-<div id="shield" onclick="startApp()">
-   <div class="btn-boot">STABILISER L'HORIZON</div>
+<div id="boot" onclick="init()">
+   <div class="btn">FIXER LE CENTRE</div>
 </div>
 
-<div id="app-frame">
-   <div id="header"><div id="voice">...</div></div>
-   <div id="anchor-point"></div>
+<div id="ui-layer">
+   <div id="header"><div id="v-msg">STABILISATION...</div></div>
+   <div id="anchor"></div>
    <div id="footer">
-       <div id="pill"><input type="text" id="flow" placeholder="FLUX D'INTÉRÊT" autocomplete="off"></div>
+       <div id="pill"><input type="text" id="inp" placeholder="AJOUTER UN FLUX" autocomplete="off"></div>
+       <div id="loc">NANTES : SCAN...</div>
    </div>
 </div>
 
-<canvas id="stage"></canvas>
+<canvas id="cvs"></canvas>
 
 <script>
-const stage = document.getElementById("stage"), ctx = stage.getContext("2d");
-const anchor = document.getElementById("anchor-point"), voice = document.getElementById("voice");
-const flowIn = document.getElementById("flow");
+const cvs = document.getElementById("cvs"), ctx = cvs.getContext("2d");
+const anchor = document.getElementById("anchor"), vMsg = document.getElementById("v-msg");
+const inp = document.getElementById("inp"), loc = document.getElementById("loc");
 
 let w, h, ratio, atoms = [], collisions = [];
 
-function startApp() {
-   document.getElementById("shield").style.display = "none";
-   voice.innerText = "A-TOm : HORIZON FIXÉ";
+function init() {
+   document.getElementById("boot").style.display = "none";
+   vMsg.innerText = "CENTRE VERROUILLÉ";
+   navigator.geolocation.getCurrentPosition(p => {
+       loc.innerText = `NANTES : ${p.coords.latitude.toFixed(3)} / ${p.coords.longitude.toFixed(3)}`;
+   });
 }
 
 function resize() {
    ratio = window.devicePixelRatio || 1;
    w = window.innerWidth; h = window.innerHeight;
-   stage.width = w * ratio; stage.height = h * ratio;
+   cvs.width = w * ratio; cvs.height = h * ratio;
    ctx.scale(ratio, ratio);
 }
 window.addEventListener("resize", resize); resize();
 
-flowIn.addEventListener("keydown", (e) => {
-   if(e.key === "Enter" && flowIn.value) {
-       // Orbites très serrées pour éviter les sorties d'écran (60px à 120px max)
-       atoms.push({ l: flowIn.value, a: Math.random()*6, d: 200, td: 70, c: "#0FF" });
-       voice.innerText = "FLUX CAPTÉ";
-       flowIn.value = "";
+inp.addEventListener("keydown", (e) => {
+   if(e.key === "Enter" && inp.value) {
+       // Rayon ultra-sécurisé (max 100px)
+       atoms.push({ l: inp.value, a: Math.random()*6, d: 200, td: 70, c: "#0FF" });
+       vMsg.innerText = "FLUX CAPTÉ";
+       inp.value = "";
        setTimeout(() => {
-           collisions.push({ l: "COLLISION", a: Math.random()*6, d: 300, td: 130, c: "#FFF", m: "SYNC ACTIVE" });
-           voice.innerText = "COLLISION DÉTECTÉE";
+           collisions.push({ l: "COLLISION", a: Math.random()*6, d: 300, td: 120, c: "#FFF" });
+           vMsg.innerText = "RÉSONANCE ACTIVE";
        }, 1000);
    }
 });
@@ -102,29 +100,30 @@ flowIn.addEventListener("keydown", (e) => {
 function draw() {
    ctx.clearRect(0, 0, w, h);
 
-   // NAVIGATION DYNAMIQUE VERS LE CENTRE DE L'ANCRE
-   const rect = anchor.getBoundingClientRect();
-   const cx = rect.left + rect.width / 2;
-   const cy = rect.top + rect.height / 2;
+   // RECALCUL DU CENTRE À CHAQUE FRAME
+   const r = anchor.getBoundingClientRect();
+   const cx = r.left + r.width / 2;
+   const cy = r.top + r.height / 2;
 
-   ctx.save(); ctx.translate(cx, cy);
+   ctx.save();
+   ctx.translate(cx, cy);
 
-   // NOYAU CENTRAL FIXE
+   // NOYAU
    ctx.strokeStyle = "rgba(0,255,255,0.4)";
    ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.stroke();
-   ctx.fillStyle = "#fff"; ctx.font = "100 16px Helvetica"; ctx.textAlign="center";
-   ctx.fillText("m", 0, 6);
+   ctx.fillStyle = "#fff"; ctx.font = "100 18px Helvetica"; ctx.textAlign="center";
+   ctx.fillText("m", 0, 7);
 
-   // SYSTÈME ORBITAL
-   [atoms, collisions].forEach((group, idx) => {
-       group.forEach(at => {
-           at.a += (idx === 0 ? 0.008 : -0.004);
-           at.d += (at.td - at.d) * 0.08;
+   // ORBITES
+   [atoms, collisions].forEach((g, i) => {
+       g.forEach(at => {
+           at.a += (i === 0 ? 0.008 : -0.004);
+           at.d += (at.td - at.d) * 0.1;
            const x = Math.cos(at.a)*at.d, y = Math.sin(at.a)*at.d;
-           ctx.strokeStyle = at.c; ctx.globalAlpha = (idx === 0 ? 1 : 0.5);
+           ctx.strokeStyle = at.c; ctx.globalAlpha = (i === 0 ? 1 : 0.4);
            ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2); ctx.stroke();
            ctx.fillStyle = "#fff"; ctx.font = "9px Helvetica";
-           ctx.fillText(at.l.toUpperCase(), x, y + 22);
+           ctx.fillText(at.l.toUpperCase(), x, y + 24);
        });
    });
    ctx.restore();
