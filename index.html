@@ -1,29 +1,203 @@
-/**
-* THE MINY - PROXIMITY RESONANCE v24.1
-* Pont entre le Réacteur (Nantes) et la Coquille (iPhone)
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>The Miny - v18.4 [NUCLEAR CORE 19.5]</title>
+<style>
+   body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; cursor: crosshair; user-select: none; touch-action: none; }
+   #instruction { position: absolute; bottom: 80px; color: #fff; font-family: 'Helvetica Neue', Helvetica; font-weight: 200; font-size: 14px; letter-spacing: 3px; opacity: 0; transition: opacity 0.8s; text-align: center; width: 100%; pointer-events: none; z-index: 10; }
+</style>
+</head>
+<body>
+<div id="instruction"></div>
+<canvas id="minyCanvas"></canvas>
+
+<script>
+/** * MODULE 19.5 : LE RÉACTEUR (CHÂSSIS DÉPORTÉ)
 */
-
-const ATOM_BRIDGE = {
-   // ÉCOUTE DU RÉACTEUR DÉPORTÉ
-   listenToReactor() {
-       ReactorService.on('RESONANCE_DETECTED', (data) => {
-           // La bombe a trouvé quelque chose à Nantes !
-           this.irradiateShell(data.intensity, data.interestLabel);
-       });
+const REACTOR = {
+   entropy: 0,
+   async ignite() {
+       const data = new Uint32Array(256);
+       window.crypto.getRandomValues(data);
+       this.entropy = data[0] / 0xFFFFFFFF;
+       console.log("A-TOM >>> RÉACTEUR ALIMENTÉ.");
+       return true;
    },
-
-   // IRRADIATION DE LA COQUILLE
-   irradiateShell(intensity, label) {
-       // 1. Augmentation de la luminescence (Peinture 18.4)
-       CanvasRenderer.glowTarget = intensity; // Le cyan devient électrique
-
-       // 2. Tension Géométrique
-       CanvasRenderer.vibrationAmplitude = intensity * 2; 
-
-       // 3. Haptique de Bord (Châssis 19.5)
-       // Une pulsation physique qui imite le battement de cœur du réacteur
-       if(navigator.vibrate) navigator.vibrate([20, 100, 20]);
-
-       console.log(`A-TOM >>> RÉSONANCE : ${label} DÉTECTÉ À PROXIMITÉ.`);
+   getPulse() {
+       // Fréquence cardiaque du réacteur (19.5)
+       return Math.sin(Date.now() * (0.002 + (this.entropy * 0.001)));
    }
 };
+
+/** * STRUCTURE 18.4 (STRICTO SENSU)
+*/
+const canvas = document.getElementById("minyCanvas");
+const ctx = canvas.getContext("2d");
+const instruction = document.getElementById("instruction");
+let width, height;
+
+let state = "START_M", currentCore = "m";
+let progress = 0, pressTimer = 0, isPressing = false;
+let targetCore = "m", selectedAngle = 0;
+let showHalo = false, instructionTimeout;
+
+let isInitiated = false;
+const knowledge = { "i": false, "y": false, "n": false, "atom": false };
+
+const menus = {
+   "m": { electrons: ["n", "y", "i"], angles: [-Math.PI/2, Math.PI/6, 5*Math.PI/6] },
+   "i": { electrons: ["e", "e", "e"], angles: [-Math.PI/2, Math.PI/6, 5*Math.PI/6] },
+   "y": { electrons: ["e", "e", "e"], angles: [-Math.PI/2, Math.PI/6, 5*Math.PI/6] }
+};
+
+function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+window.addEventListener("resize", resize); resize();
+
+function updateInstruction(text, isActionProposal = false) {
+   clearTimeout(instructionTimeout);
+   if (currentCore === "m" && text.includes("retour")) {
+       text = "the miny, vos intérêts nous (re)connectent";
+       isActionProposal = false;
+   }
+   instruction.style.opacity = 0;
+   setTimeout(() => {
+       instruction.innerHTML = text;
+       instruction.style.opacity = 1;
+       showHalo = isActionProposal;
+   }, 400);
+}
+
+const onDown = (e) => {
+   isPressing = true; pressTimer = 0;
+   const t = e.touches ? e.touches[0] : e;
+   const mx = t.clientX - width/2, my = t.clientY - height/2;
+   const dist = Math.sqrt(mx*mx + my*my);
+
+   if (state === "IDLE" && dist > 55) {
+       if (!isInitiated && currentCore === "m") return;
+       const config = menus[currentCore];
+       config.electrons.forEach((label, i) => {
+           if (label === "e") return;
+           const a = config.angles[i], ex = Math.cos(a)*180, ey = Math.sin(a)*180;
+           if (Math.sqrt((mx-ex)**2 + (my-ey)**2) < 50) {
+               targetCore = label; selectedAngle = a;
+               state = (label === "n") ? "SPACE_JUMP" : "NAV_SPIN";
+               progress = 0; isPressing = false;
+           }
+       });
+   }
+};
+
+const onUp = (e) => {
+   const t = e.changedTouches ? e.changedTouches[0] : e;
+   const mx = t.clientX - width/2, my = t.clientY - height/2;
+   const distCenter = Math.sqrt(mx*mx + my*my);
+
+   if (isPressing && pressTimer < 0.4) {
+       if (state === "IDLE" && currentCore !== "m" && distCenter < 65) {
+           targetCore = "m"; selectedAngle = Math.PI; state = "NAV_SPIN"; progress = 0;
+       } else if (state === "ATOM_ALIGN" && (distCenter < 85 || Math.abs(mx - 180) < 60)) {
+           state = "IDLE"; currentCore = "m"; progress = 0; isInitiated = true;
+           updateInstruction("the miny, vos intérêts nous (re)connectent", false);
+       } else if (state === "MAP_VIEW" && distCenter < 80) {
+           state = "SPACE_RETURN"; progress = 0;
+       }
+   }
+   isPressing = false;
+};
+
+window.addEventListener("mousedown", onDown); window.addEventListener("mouseup", onUp);
+window.addEventListener("touchstart", (e) => { e.preventDefault(); onDown(e); }, {passive: false});
+window.addEventListener("touchend", (e) => { e.preventDefault(); onUp(e); }, {passive: false});
+
+function drawAtom(x, y, label, radius, isCore, alpha = 1, pulse = false) {
+   ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
+   if (label === "-") {
+       ctx.fillStyle = "#FFF"; ctx.font = "300 28px Helvetica Neue"; ctx.textAlign = "center"; ctx.fillText("-", 0, 10);
+   } else if (label !== "") {
+       if(pulse) {
+           // M26 : Pulsation Phononique synchronisée sur le Réacteur
+           const p = Math.pow(Math.abs(REACTOR.getPulse()), 2);
+           const g = ctx.createRadialGradient(0, 0, radius, 0, 0, radius * (2 + p * 1.5));
+           g.addColorStop(0, "rgba(0, 255, 255, 0.5)"); g.addColorStop(1, "rgba(0, 0, 0, 0)");
+           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, radius * 5, 0, Math.PI*2); ctx.fill();
+       }
+       ctx.shadowColor = "#0FF"; ctx.shadowBlur = 15; ctx.strokeStyle = "#FFF"; ctx.lineWidth = 2.5; ctx.fillStyle = "#000";
+       ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+       ctx.shadowBlur = 0; ctx.fillStyle = "#FFF";
+       ctx.font = isCore ? "300 28px Helvetica Neue" : "300 14px Helvetica Neue";
+       ctx.textAlign = "center"; ctx.fillText(label === "e" ? "" : label, 0, isCore ? 10 : 5);
+   }
+   ctx.restore();
+}
+
+function draw() {
+   ctx.clearRect(0, 0, width, height);
+   ctx.save(); ctx.translate(width / 2, height / 2);
+
+   if (isPressing && (state === "IDLE" || state === "MAP_VIEW")) {
+       pressTimer += 0.016;
+       if (pressTimer > 0.4) {
+           const arc = Math.min(1, (pressTimer - 0.4) * 1.5);
+           ctx.strokeStyle = "#FFF"; ctx.lineWidth = 3;
+           ctx.beginPath(); ctx.arc(0, 0, 52, -Math.PI/2, (-Math.PI/2) + (Math.PI*2*arc)); ctx.stroke();
+           if (arc >= 1) { 
+               // M19.5 : Ignite Reactor before Spin
+               REACTOR.ignite().then(() => {
+                   state = "ATOM_SPIN"; progress = 0; pressTimer = 0; isPressing = false;
+               });
+           }
+       }
+   }
+
+   if (state === "START_M") {
+       progress += 0.012; drawAtom(0, 0, "m", 40, true, Math.min(1, progress * 2));
+       if (progress >= 1) { state = "ECLOSION"; progress = 0; }
+   } else if (state === "ECLOSION") {
+       progress += 0.02; drawAtom(0, 0, "m", 40, true, 1);
+       menus.m.electrons.forEach((l, i) => {
+           const a = menus.m.angles[i], d = 180 * Math.min(1, progress);
+           drawAtom(Math.cos(a)*d, Math.sin(a)*d, l, 25, false, Math.min(1, progress));
+       });
+       if (progress >= 1) { state = "IDLE"; updateInstruction("the miny, vos intérêts nous (re)connectent", false); setTimeout(() => { if(state === "IDLE" && currentCore === "m" && !isInitiated) updateInstruction("maintenir m pour éveiller A-TOm", true); }, 1500); }
+   } else if (state === "IDLE") {
+       // M26 : Oscillation alimentée par le Réacteur
+       const osc = REACTOR.getPulse() * 5;
+       menus[currentCore].electrons.forEach((l, i) => {
+           drawAtom(Math.cos(menus[currentCore].angles[i])*(180 + osc), Math.sin(menus[currentCore].angles[i])*(180 + osc), l, 25, false, 1);
+       });
+       drawAtom(0, 0, currentCore, 40, true, 1, showHalo);
+   }
+   // ... [Reste des états ATOM_SPIN, ATOM_ALIGN, NAV_SPIN etc. identiques à 18.4]
+   else if (state === "ATOM_SPIN") {
+       progress += 0.02; const rot = progress * Math.PI * 4;
+       ["A", "-", "T", "O", "m"].forEach((c, i) => drawAtom(Math.cos(rot + (i * Math.PI * 2 / 5)) * 180 * (1-progress), Math.sin(rot + (i * Math.PI * 2 / 5)) * 180 * (1-progress), c, 22, true, 1));
+       if (progress >= 1) { state = "ATOM_ALIGN"; progress = 0; if (!knowledge.atom) { updateInstruction("toucher m pour revenir", true); knowledge.atom = true; } else { updateInstruction("the miny, vos intérêts nous (re)connectent", false); } }
+   } else if (state === "ATOM_ALIGN") {
+       const pos = [-180, -90, 0, 90, 180], chars = ["A", "-", "T", "O", "m"];
+       pos.forEach((tx, i) => drawAtom(tx * Math.min(1, progress * 1.5), 0, chars[i], 22, true, 1, (i===4 && showHalo)));
+       progress += 0.02;
+   } else if (state === "NAV_SPIN" || state === "SPACE_JUMP" || state === "SPACE_RETURN" || state === "MAP_VIEW") {
+       if (state === "NAV_SPIN") {
+           progress += 0.045; const t = progress, spin = t * Math.PI * 2;
+           drawAtom(Math.cos(selectedAngle + spin) * 180 * (1-t), Math.sin(selectedAngle + spin) * 180 * (1-t), targetCore, 25+(15*t), true, 1, true);
+           if (t > 0.4) { const nt = (t-0.4)*1.66; menus[targetCore].electrons.forEach((l, i) => drawAtom(Math.cos(menus[targetCore].angles[i] + (1-nt)*Math.PI)*180*nt, Math.sin(menus[targetCore].angles[i] + (1-nt)*Math.PI)*180*nt, l, 25, false, nt)); }
+           if (progress >= 1) { currentCore = targetCore; state = "IDLE"; progress = 0; if (!knowledge[currentCore]) { updateInstruction("the miny, vos intérêts nous (re)connectent", false); setTimeout(() => { if(currentCore !== "m") updateInstruction("toucher " + currentCore + " pour retour", true); }, 1000); knowledge[currentCore] = true; } else { updateInstruction("the miny, vos intérêts nous (re)connectent", false); } }
+       } else {
+           let p = (state === "SPACE_JUMP") ? progress : (state === "SPACE_RETURN" ? 1-progress : 1);
+           let zoom = Math.pow(p, 3) * 50 + 1; ctx.strokeStyle = "rgba(0, 255, 255, 0.4)";
+           for(let i = -5; i <= 5; i++) { ctx.beginPath(); ctx.moveTo(i * 100 * zoom, -height); ctx.lineTo(i * 100 * zoom, height); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-width, i * 100 * zoom); ctx.lineTo(width, i * 100 * zoom); ctx.stroke(); }
+           drawAtom(0, 0, "n", 40, true, 1, true);
+           if (state !== "MAP_VIEW") progress += 0.025;
+           if (progress >= 1 && state === "SPACE_JUMP") { state = "MAP_VIEW"; progress = 0; if(!knowledge.n) { updateInstruction("toucher n pour quitter la carte", true); knowledge.n = true; } else { updateInstruction("the miny, vos intérêts nous (re)connectent", false); } }
+           if (progress >= 1 && state === "SPACE_RETURN") { state = "IDLE"; currentCore = "m"; progress = 0; updateInstruction("the miny, vos intérêts nous (re)connectent", false); }
+       }
+   }
+
+   ctx.restore(); requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
